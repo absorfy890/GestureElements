@@ -23,9 +23,19 @@ Node 24 LTS, npm 11, Vite 8.3.4, three 0.186.1 (WebGL 2). Model sledovania ruky:
 nevybraný (kandidát MediaPipe Tasks Vision HandLandmarker); vyberie sa podľa pohodlia.
 Modely a wasm držať lokálne v `public/` — žiadne CDN, aplikácia musí bežať offline.
 
+## Hranice technológií (dohodnuté 31.10.2026)
+- Základ = techniky z cvičení: Three.js tak, ako na CV5–11 (scéna, svetlá, tiene, hmla,
+  textúry, raycast, GUI). Témy, ktoré ešte neboli, robiť v štýle cvičení.
+- Mimo cvičení len: MediaPipe (vyžaduje téma), vlastné shadery (`ShaderMaterial`, GLSL —
+  nadväznosť na WebGL cvičenia 2–4), doplnky samotného Three.js (`OrbitControls`, post-processing).
+- Nepoužívať: hotové VFX knižnice (efekty ohňa/vody robíme sami), iný engine či obal
+  (Babylon, React Three Fiber), TypeScript, CDN. Fyzikálna knižnica — rozhodne sa po CV12.
+- Cvičiaci nemá námietky proti AI pri písaní kódu.
+
 ## Architektúra (moduly v `src/`)
+main (vstup), app (slučka, resize), world/sceneSetup (renderer, kamera, svetlá),
 input/hand, input/gestures (state machine), world/terrain, world/groundState (bunkový
-automat), fx/fire, fx/water, cast/aim, ui, app. Kód komentovať podľa pokynov (hlavičky
+automat), fx/fire, fx/water, cast/aim, ui. Kód komentovať podľa pokynov (hlavičky
 súborov: autor, dátum, verzia; funkcie: popis vstupov/výstupov).
 
 ## Pravidlá
