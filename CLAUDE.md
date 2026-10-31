@@ -39,6 +39,10 @@ automat), fx/fire, fx/water, cast/aim, ui. Kód komentovať podľa pokynov (hlav
 súborov: autor, dátum, verzia; funkcie: popis vstupov/výstupov).
 
 ## Pravidlá
+- Spôsob práce (31.10.2026): projekt robíme so študentom spolu postupne, nie tak, že Claude
+  vygeneruje celú úlohu. Úlohu deliť na malé kroky (jedna funkcia/myšlienka); pred krokom
+  krátko vysvetliť čo a prečo; po kroku počkať na otázky, až potom ďalší krok. Niektoré kroky
+  píše študent sám — vtedy Claude kontroluje.
 - Vrstvy rozsahu V0–V4 sú v `PROGRES.md`; najprv minimum (V1), až potom ďalšie.
 - Vždy zachovať záložný vstup myšou a ochranu pri strate ruky z kadru.
 - Výkonnostné presety (rozlíšenie, počet častíc, FPS cieľ ≥ 30) — súčasť návrhu.
