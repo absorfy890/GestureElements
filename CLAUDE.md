@@ -24,8 +24,8 @@ nevybraný (kandidát MediaPipe Tasks Vision HandLandmarker); vyberie sa podľa 
 Modely a wasm držať lokálne v `public/` — žiadne CDN, aplikácia musí bežať offline.
 
 ## Hranice technológií (dohodnuté 31.10.2026)
-- Základ = techniky z cvičení: Three.js tak, ako na CV5–11 (scéna, svetlá, tiene, hmla,
-  textúry, raycast, GUI). Témy, ktoré ešte neboli, robiť v štýle cvičení.
+- Základ = techniky z cvičení: Three.js, cvičenia CV5–11 ako vzor, nie nutne 1:1 (scéna,
+  svetlá, tiene, hmla, textúry, raycast, GUI).
 - Mimo cvičení len: MediaPipe (vyžaduje téma), vlastné shadery (`ShaderMaterial`, GLSL —
   nadväznosť na WebGL cvičenia 2–4), doplnky samotného Three.js (`OrbitControls`, post-processing).
 - Nepoužívať: hotové VFX knižnice (efekty ohňa/vody robíme sami), iný engine či obal
