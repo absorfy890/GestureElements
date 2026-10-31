@@ -3,3 +3,6 @@ dist/
 .idea/
 .vscode/
 .DS_Store
+
+# MediaPipe wasm — kopíruje sa z node_modules (npm run copy-wasm)
+public/mediapipe/wasm/

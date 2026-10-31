@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite --open",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "copy-wasm": "node scripts/copy-wasm.js",
+    "postinstall": "npm run copy-wasm"
   },
   "dependencies": {
+    "@mediapipe/tasks-vision": "1.1.1",
     "three": "0.186.1"
   },
   "devDependencies": {
