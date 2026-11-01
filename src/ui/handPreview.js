@@ -12,6 +12,13 @@
 const PREVIEW_WIDTH = 240; // šírka panelu v px; výška podľa pomeru strán kamery
 const INDEX_TIP = 8;       // index bodu: špička ukazováka (ním sa neskôr mieri)
 
+// Farba rámika podľa stavu ruky (HandTracker.state).
+const STATE_COLORS = {
+    tracking: '#30d070', // ruka je v zábere
+    holding:  '#ffa020', // ruka na chvíľu vypadla, body sa držia
+    lost:     '#ff4040', // ruka nie je
+};
+
 export class HandPreview {
     /**
      * Vytvorí panel a vloží ho do stránky.
@@ -26,7 +33,7 @@ export class HandPreview {
         Object.assign(this.root.style, {
             position: 'fixed', right: '12px', bottom: '12px',
             width: `${PREVIEW_WIDTH}px`, height: `${height}px`,
-            border: '2px solid rgba(255,255,255,0.6)', borderRadius: '6px',
+            border: '3px solid rgba(255,255,255,0.6)', borderRadius: '6px', // farba podľa stavu (setState)
             overflow: 'hidden', background: '#000',
             pointerEvents: 'none', // panel nesmie zachytávať myš (OrbitControls pod ním)
         });
@@ -47,6 +54,22 @@ export class HandPreview {
 
         this.root.append(video, this.canvas);
         container.appendChild(this.root);
+
+        this.state = null;
+        this.setState('lost');
+    }
+
+    /**
+     * Zobrazí stav ruky farbou rámika (zelená / oranžová / červená).
+     * Vstup:  state — 'tracking' | 'holding' | 'lost' (z HandTracker.state).
+     * Výstup: žiadny.
+     */
+    setState(state) {
+        if (state === this.state) {
+            return; // štýl meniť len pri zmene (nie v každom snímku)
+        }
+        this.state = state;
+        this.root.style.borderColor = STATE_COLORS[state];
     }
 
     /**
@@ -65,6 +88,9 @@ export class HandPreview {
         // 0..1 → pixely plátna; x zrkadlíme (1 − x), aby body sedeli na zrkadlovom videu.
         const px = (p) => (1 - p.x) * canvas.width;
         const py = (p) => p.y * canvas.height;
+
+        // Pri 'holding' sú body staré (zamrznuté) → kresliť ich bledšie.
+        ctx.globalAlpha = this.state === 'holding' ? 0.4 : 1;
 
         // Kosti: čiary medzi kĺbmi.
         ctx.strokeStyle = 'rgba(0, 255, 160, 0.9)';
