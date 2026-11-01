@@ -21,6 +21,8 @@ export class App {
         this.camera = createCamera(window.innerWidth / window.innerHeight);
         this.scene = createScene();
         this.timer = new THREE.Timer(); // čas medzi snímkami pre animácie (od V1)
+        this.hand = null;               // HandTracker; null = bez kamery/modelu → len myš
+        this.handWasPresent = false;    // stav ruky v minulom snímku (na výpis zmeny)
 
         container.appendChild(this.renderer.domElement);
 
@@ -51,8 +53,23 @@ export class App {
      */
     renderFrame(timestamp) {
         this.timer.update(timestamp);
+        this.updateHand(timestamp);
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
+    }
+
+    /**
+     * Spustí detekciu ruky (ak je kamera aj model) a vypíše do konzoly zmenu stavu ruky.
+     * Vstup: timestamp — čas snímku v ms. Výstup: žiadny.
+     */
+    updateHand(timestamp) {
+        if (!this.hand?.update(timestamp)) {
+            return; // bez trackera alebo bez nového snímku kamery
+        }
+        if (this.hand.present !== this.handWasPresent) {
+            console.log(this.hand.present ? 'Ruka v zábere' : 'Ruka stratená');
+            this.handWasPresent = this.hand.present;
+        }
     }
 
     /** Prispôsobí pomer strán kamery a veľkosť plátna veľkosti okna. */

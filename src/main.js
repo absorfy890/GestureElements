@@ -8,7 +8,7 @@
  */
 import { App } from './app.js';
 import { startCamera } from './input/camera.js';
-import { loadHandLandmarker } from './input/hand.js';
+import { loadHandLandmarker, HandTracker } from './input/hand.js';
 
 const app = new App(document.getElementById('app'));
 app.start();
@@ -27,6 +27,11 @@ if (hand.landmarker) {
     console.log(`HandLandmarker OK (${hand.delegate})`);
 } else {
     console.warn(`Model ruky nedostupný → myš. ${hand.error}`);
+}
+
+// Sledovanie ruky len vtedy, keď je kamera aj model; inak app.hand ostane null (myš).
+if (camera.video && hand.landmarker) {
+    app.hand = new HandTracker(hand.landmarker, camera.video);
 }
 
 // Prístup z konzoly prehliadača pri ladení (len vo vývojovom režime).

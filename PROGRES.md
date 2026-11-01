@@ -8,7 +8,9 @@ Krok 2.2 hotový: `src/input/camera.js` (`startCamera()` → `{ video, error }`)
 len v konzole.
 Krok 2.3 hotový: `src/input/hand.js` (`loadHandLandmarker()` → `{ landmarker, delegate, error }`,
 GPU → záloha CPU), v `main.js` paralelne s kamerou (`Promise.all`).
-Ďalej: 2.4 — `detectForVideo` v slučke, len pri novom snímku videa (výstup: je ruka + 21 bodov).
+Krok 2.4 hotový: trieda `HandTracker` (`update(čas)` → detekcia len pri novom snímku,
+`present` + `landmarks`), volá ju `App.updateHand()`; v konzole len zmena stavu ruky.
+Ďalej: 2.5 — 21 bodov na obrazovke (2D canvas nad videom, zrkadlenie x → 1 − x).
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -32,7 +34,7 @@ Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myš
      → záložný vstup myšou.~~ (01.11.)
    - ~~2.3 Načítanie modelu: `HandLandmarker` v režime VIDEO, 1 ruka; modul `src/input/hand.js`
      bez závislosti na Three.js.~~ (01.11.) Výstup „je ruka / nie“ + 21 bodov → presunuté do 2.4.
-   - 2.4 Detekcia: `detectForVideo` v slučke, len pri novom snímku videa.
+   - ~~2.4 Detekcia: `detectForVideo` v slučke, len pri novom snímku videa.~~ (01.11.)
    - 2.5 21 bodov na obrazovke: 2D canvas nad videom, zrkadlenie x → 1 − x.
    - 2.6 Strata ruky z kadru: stav „stratená“, indikátor, bez pádu aplikácie.
    - 2.7 Záver: FPS ≥ 30, rozhodnutie do `CLAUDE.md`, kostra `docs/` (vstup ruky), commit.
@@ -71,3 +73,5 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   varovanie, scéna beží ďalej (overené aj v paneli prehliadača Claude).
 - 01.11.2026 — 2.3 hotový: `HandLandmarker OK (GPU)` u študenta v Chrome aj v paneli Claude;
   sieť: wasm (SIMD) aj model len z localhost, žiadne CDN.
+- 01.11.2026 — 2.4 hotový: študent overil „Ruka v zábere“ / „Ruka stratená“ a 21 bodov
+  v `app.hand.landmarks`; bez kamery `app.hand === null`, bez chýb.
