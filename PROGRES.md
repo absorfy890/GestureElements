@@ -10,7 +10,9 @@ Krok 2.3 hotový: `src/input/hand.js` (`loadHandLandmarker()` → `{ landmarker,
 GPU → záloha CPU), v `main.js` paralelne s kamerou (`Promise.all`).
 Krok 2.4 hotový: trieda `HandTracker` (`update(čas)` → detekcia len pri novom snímku,
 `present` + `landmarks`), volá ju `App.updateHand()`; v konzole len zmena stavu ruky.
-Ďalej: 2.5 — 21 bodov na obrazovke (2D canvas nad videom, zrkadlenie x → 1 − x).
+Krok 2.5 hotový: `src/ui/handPreview.js` (`HandPreview` — panel vpravo dole, zrkadlové video
+cez CSS, body cez 2D canvas s x → 1 − x, špička ukazováka červená).
+Ďalej: 2.6 — strata ruky z kadru (stav „stratená“, indikátor, bez pádu).
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -35,7 +37,7 @@ Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myš
    - ~~2.3 Načítanie modelu: `HandLandmarker` v režime VIDEO, 1 ruka; modul `src/input/hand.js`
      bez závislosti na Three.js.~~ (01.11.) Výstup „je ruka / nie“ + 21 bodov → presunuté do 2.4.
    - ~~2.4 Detekcia: `detectForVideo` v slučke, len pri novom snímku videa.~~ (01.11.)
-   - 2.5 21 bodov na obrazovke: 2D canvas nad videom, zrkadlenie x → 1 − x.
+   - ~~2.5 21 bodov na obrazovke: 2D canvas nad videom, zrkadlenie x → 1 − x.~~ (01.11.)
    - 2.6 Strata ruky z kadru: stav „stratená“, indikátor, bez pádu aplikácie.
    - 2.7 Záver: FPS ≥ 30, rozhodnutie do `CLAUDE.md`, kostra `docs/` (vstup ruky), commit.
    Overenie: body na ruke kontroluje študent na vlastnej kamere; Claude screenshotmi len
@@ -60,6 +62,8 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
 - Chyba CSP „unsafe-eval … chrome-extension://…“ z `content.js` v konzole pochádza z rozšírenia
   prehliadača, nie z nášho kódu (v inkognito nie je).
 - Na Windows `TaskStop` zastaví len `npx`, proces Vite (node) beží ďalej → zastaviť podľa PID.
+- Test bez kamery: umelé video z canvasu (`canvas.captureStream()`) → `HandPreview` a pod.
+  Snímky panela Claude orezávajú pravý dolný roh (artefakt snímky, nie chyba rozloženia).
 
 ## Denník
 - 27.10.2026 — založený repozitár, `CLAUDE.md`, `PROGRES.md`; rozsah V0–V4 dohodnutý.
@@ -75,3 +79,5 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   sieť: wasm (SIMD) aj model len z localhost, žiadne CDN.
 - 01.11.2026 — 2.4 hotový: študent overil „Ruka v zábere“ / „Ruka stratená“ a 21 bodov
   v `app.hand.landmarks`; bez kamery `app.hand === null`, bez chýb.
+- 01.11.2026 — 2.5 hotový: body sedia na ruke (overil študent); zrkadlenie overené aj
+  v paneli Claude na umelom videu (canvas → `captureStream`).

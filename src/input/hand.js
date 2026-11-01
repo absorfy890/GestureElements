@@ -58,6 +58,9 @@ export class HandTracker {
 
         this.present = false;    // je ruka v zábere?
         this.landmarks = null;   // 21 bodov { x, y, z }, x a y v rozsahu 0..1 obrazu kamery
+
+        // „Kosti“ ruky — dvojice indexov bodov { start, end }; na kreslenie (bez importu MediaPipe inde).
+        this.connections = HandLandmarker.HAND_CONNECTIONS;
     }
 
     /**
