@@ -4,7 +4,9 @@
 V0 krok 1 hotový: Vite + Three.js, prázdna scéna (kamera, HemisphereLight + DirectionalLight
 s tieňmi, OrbitControls, pomocná mriežka), `package-lock.json` → funguje `npm ci`.
 Krok 2.1 hotový: MediaPipe súbory lokálne, Vite ich servíruje.
-Ďalej: 2.2 — kamera (`getUserMedia` → `<video>`, chyby → záložný vstup myšou).
+Krok 2.2 hotový: `src/input/camera.js` (`startCamera()` → `{ video, error }`), výsledok zatiaľ
+len v konzole.
+Ďalej: 2.3 — načítanie `HandLandmarker` (VIDEO, 1 ruka) v `src/input/hand.js`.
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -24,8 +26,8 @@ Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myš
    - ~~2.1 Lokálne súbory: `npm install` balíka (presná verzia, `npm view`), wasm do
      `public/mediapipe/wasm/`, model `hand_landmarker.task` do `public/mediapipe/`;
      overiť, že ich Vite servíruje (žiadne CDN, musí bežať offline).~~ (01.11.)
-   - 2.2 Kamera: `getUserMedia` → `<video>`; ošetriť chyby (bez kamery, zamietnutý prístup)
-     → záložný vstup myšou.
+   - ~~2.2 Kamera: `getUserMedia` → `<video>`; ošetriť chyby (bez kamery, zamietnutý prístup)
+     → záložný vstup myšou.~~ (01.11.)
    - 2.3 Načítanie modelu: `HandLandmarker` v režime VIDEO, 1 ruka; modul `src/input/hand.js`
      bez závislosti na Three.js (vracia „je ruka / nie“ + 21 bodov).
    - 2.4 Detekcia: `detectForVideo` v slučke, len pri novom snímku videa.
@@ -51,6 +53,9 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   Model `public/mediapipe/hand_landmarker.task` je v gite (7,8 MB, v npm nie je), zdroj:
   `storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/`,
   SHA-256 `fbc2a300…3607cde1`.
+- Chyba CSP „unsafe-eval … chrome-extension://…“ z `content.js` v konzole pochádza z rozšírenia
+  prehliadača, nie z nášho kódu (v inkognito nie je).
+- Na Windows `TaskStop` zastaví len `npx`, proces Vite (node) beží ďalej → zastaviť podľa PID.
 
 ## Denník
 - 27.10.2026 — založený repozitár, `CLAUDE.md`, `PROGRES.md`; rozsah V0–V4 dohodnutý.
@@ -60,3 +65,5 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   verziu balíka a odkaz na model overiť v 2.1).
 - 01.11.2026 — 2.1 hotový: balík 1.1.1, wasm cez postinstall, model v `public/mediapipe/`;
   dev server vracia model aj wasm (200, správne veľkosti, `application/wasm`).
+- 01.11.2026 — 2.2 hotový: kamera 640×480 OK (overil študent v Chrome), zamietnutý prístup →
+  varovanie, scéna beží ďalej (overené aj v paneli prehliadača Claude).
