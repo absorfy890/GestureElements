@@ -19,9 +19,11 @@ Aplikácia má pri štarte sekciu About (mená, katedra/fakulta/univerzita, pred
 nevratné akcie potvrdzovať. Úložisko a limit veľkosti určuje cvičiaci (zatiaľ neznáme).
 
 ## Technológie (pevné verzie)
-Node 24 LTS, npm 11, Vite 8.3.4, three 0.186.1 (WebGL 2). Model sledovania ruky: zatiaľ
-nevybraný (kandidát MediaPipe Tasks Vision HandLandmarker); vyberie sa podľa pohodlia.
-Modely a wasm držať lokálne v `public/` — žiadne CDN, aplikácia musí bežať offline.
+Node 24 LTS, npm 11, Vite 8.3.4, three 0.186.1 (WebGL 2).
+Model sledovania ruky (rozhodnuté 01.11.2026, overené vo V0): `@mediapipe/tasks-vision` 1.1.1,
+HandLandmarker (float16, verzia 1), režim VIDEO, 1 ruka, GPU so zálohou CPU.
+Modely a wasm držať lokálne v `public/` — žiadne CDN, aplikácia musí bežať offline
+(wasm kopíruje `scripts/copy-wasm.js` po `npm ci`; model je v gite).
 
 ## Hranice technológií (dohodnuté 31.10.2026)
 - Základ = techniky z cvičení: Three.js, cvičenia CV5–11 ako vzor, nie nutne 1:1 (scéna,

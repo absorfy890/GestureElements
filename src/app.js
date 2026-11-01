@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, createCamera, createScene } from './world/sceneSetup.js';
+import { RateMeter, PerfOverlay } from './ui/fpsMeter.js';
 
 export class App {
     /**
@@ -24,6 +25,12 @@ export class App {
         this.hand = null;               // HandTracker; null = bez kamery/modelu → len myš
         this.preview = null;            // HandPreview (náhľad kamery s bodmi); null = bez kamery
         this.lastHandState = null;      // stav ruky v minulom snímku (na výpis zmeny)
+        this.handDelegate = null;       // 'GPU' | 'CPU' — kde beží model ruky (na zobrazenie)
+
+        // Meranie výkonu: snímky vykreslenia a detekcie ruky za sekundu (cieľ ≥ 30).
+        this.renderMeter = new RateMeter();
+        this.detectMeter = new RateMeter();
+        this.perf = new PerfOverlay(container);
 
         container.appendChild(this.renderer.domElement);
 
@@ -57,6 +64,21 @@ export class App {
         this.updateHand(timestamp);
         this.controls.update();
         this.renderer.render(this.scene, this.camera);
+
+        this.renderMeter.tick(timestamp);
+        this.updatePerf();
+    }
+
+    /** Zobrazí aktuálne merania výkonu v PerfOverlay. Vstup/výstup: žiadny. */
+    updatePerf() {
+        const lines = [`Render ${this.renderMeter.perSecond.toFixed(0)} FPS`];
+        if (this.hand) {
+            const d = this.detectMeter;
+            lines.push(`Ruka   ${d.perSecond.toFixed(0)} FPS, ${d.avgDuration.toFixed(1)} ms (${this.handDelegate})`);
+        } else {
+            lines.push('Ruka   — (myš)');
+        }
+        this.perf.show(lines);
     }
 
     /**
@@ -65,8 +87,15 @@ export class App {
      * Vstup: timestamp — čas snímku v ms. Výstup: žiadny.
      */
     updateHand(timestamp) {
-        if (!this.hand?.update(timestamp)) {
-            return; // bez trackera, alebo sa nezmenili body ani stav
+        if (!this.hand) {
+            return; // bez kamery/modelu → len myš
+        }
+        const changed = this.hand.update(timestamp);
+        if (this.hand.ranDetection) {
+            this.detectMeter.tick(timestamp, this.hand.detectDuration);
+        }
+        if (!changed) {
+            return; // nezmenili sa body ani stav → netreba prekresľovať
         }
         this.preview?.setState(this.hand.state);
         this.preview?.draw(this.hand.landmarks, this.hand.connections);

@@ -14,14 +14,20 @@ Krok 2.5 hotový: `src/ui/handPreview.js` (`HandPreview` — panel vpravo dole, 
 cez CSS, body cez 2D canvas s x → 1 − x, špička ukazováka červená).
 Krok 2.6 hotový: `HandTracker.state` = tracking / holding (posledné body ešte `HOLD_MS` = 300 ms)
 / lost; chyba modelu → varovanie, nie pád; rámik náhľadu zelený / oranžový / červený.
-Ďalej: 2.7 — záver kroku 2: FPS ≥ 30 (rendering aj detekcia), rozhodnutie do `CLAUDE.md`,
-kostra `docs/` (vstup ruky), commit.
+Krok 2.7 hotový → **krok 2 (hand tracking) hotový.** Panel výkonu (`src/ui/fpsMeter.js`),
+nový snímok cez `requestVideoFrameCallback`, rozhodnutie o modeli v `CLAUDE.md`, kostra
+`docs/` (používateľská + systémová príručka, Markdown).
+Ďalej: krok 3 — prvý návrh gest (štart / potvrdiť / zrušiť) z landmarkov, výpis stavu.
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
 - **V1 — minimum:** terén (statická heightmap); jedna ruka; oheň a voda; cast (štart → náhľad
   → potvrdenie/zrušenie); terén reaguje (horí, mokne, voda hasí); záložný vstup myšou;
   About; dokumentácia; zip.
+  - **Výkon — detekcia ruky mimo hlavného vlákna:** `detectForVideo` beží synchrónne
+    ~22 ms (GPU, notebook 144 Hz) a v tom čase sa nekreslí → presunúť HandLandmarker
+    do Web Workera (snímok cez `createImageBitmap` / `VideoFrame`, výsledok cez `postMessage`);
+    preveriť, koľko z 22 ms je kopírovanie GPU ↔ CPU. Cieľ: render nezávislý od detekcie.
 - **V2 — deformácia terénu:** vlny/krátery, šírenie ohňa, stekanie vody.
 - **V3 — varianty a druhá ruka:** prúd vs. guľa vody, kus vs. stena kameňa; zem a vzduch;
   druhá ruka; kombá; pohyb klávesnicou.
@@ -30,7 +36,7 @@ Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myš
 
 ## Plán týždňa 27.10–2.11 (V0)
 1. ~~`npm ci`, prázdna Three.js scéna na Vite (kostra z cvičenia 5).~~ (31.10.)
-2. Model sledovania ruky z lokálnych súborov, 21 bodov na obrazovke (kandidát: MediaPipe
+2. ~~Model sledovania ruky z lokálnych súborov, 21 bodov na obrazovke~~ (01.11.) (kandidát: MediaPipe
    `@mediapipe/tasks-vision`, HandLandmarker; rozhodnutie zapísať do `CLAUDE.md`):
    - ~~2.1 Lokálne súbory: `npm install` balíka (presná verzia, `npm view`), wasm do
      `public/mediapipe/wasm/`, model `hand_landmarker.task` do `public/mediapipe/`;
@@ -42,12 +48,12 @@ Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myš
    - ~~2.4 Detekcia: `detectForVideo` v slučke, len pri novom snímku videa.~~ (01.11.)
    - ~~2.5 21 bodov na obrazovke: 2D canvas nad videom, zrkadlenie x → 1 − x.~~ (01.11.)
    - ~~2.6 Strata ruky z kadru: stav „stratená“, indikátor, bez pádu aplikácie.~~ (01.11.)
-   - 2.7 Záver: FPS ≥ 30, rozhodnutie do `CLAUDE.md`, kostra `docs/` (vstup ruky), commit.
+   - ~~2.7 Záver: FPS ≥ 30, rozhodnutie do `CLAUDE.md`, kostra `docs/` (vstup ruky), commit.~~ (01.11.)
    Overenie: body na ruke kontroluje študent na vlastnej kamere; Claude screenshotmi len
    štart bez chýb v konzole (alebo nahraté video cez fake webcam).
 3. Prvý návrh gest (štart / potvrdiť / zrušiť) z landmarkov, výpis stavu.
 4. Rovná zem + kurzor ruky ako raycast na zem.
-5. Založiť kostru dokumentácie (`docs/`).
+5. ~~Založiť kostru dokumentácie (`docs/`).~~ (01.11., spolu s 2.7)
 
 ## Otvorené otázky na cvičiaceho
 Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí Three.js + Vite;
@@ -69,6 +75,17 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   Snímky panela Claude orezávajú pravý dolný roh (artefakt snímky, nie chyba rozloženia).
 - Test logiky `HandTracker` bez kamery: podvrhnúť `{ detectForVideo() }` a `{ currentTime }`,
   volať `update(čas)` s ručným časom (postup v denníku 01.11., krok 2.6).
+- `video.currentTime` pri živej kamere plynie spojito (nie po snímkach) → nový snímok zisťovať
+  cez `requestVideoFrameCallback`. Pozor: v skrytej karte / skrytom paneli Claude sa nevolá.
+- Meranie výkonu (notebook študenta, 144 Hz, GPU): bez kamery render 144 FPS; s detekciou
+  render ~100 FPS, detekcia ~27 ms/snímok. Kamera notebooku dáva reálne ~16,5 snímok/s
+  (aj pri 1280×720 a pri svetle; `getSettings()` hlási 30 — neplatí) → limit kamery, nie kódu.
+  Meranie: `metadata.presentedFrames` z `requestVideoFrameCallback` za 3 s.
+- Prvá detekcia trvá ~2,4 s (kompilácia GPU shaderov MediaPipe) — pri štarte nevadí;
+  ak bude About/úvodná obrazovka, zahriať model za ňou.
+- Ak budú gestá „lepkavé“: kratšia expozícia cez `track.applyConstraints`
+  (`exposureMode: 'manual'`) — nie všetky kamery to vedia. Do používateľskej príručky:
+  hrať pri dobrom osvetlení.
 
 ## Denník
 - 27.10.2026 — založený repozitár, `CLAUDE.md`, `PROGRES.md`; rozsah V0–V4 dohodnutý.
@@ -89,3 +106,7 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
 - 01.11.2026 — 2.6 hotový: test s podvrhnutým modelom (ruka / bez ruky / výnimka, ručný čas)
   odhalil blikanie tracking ↔ holding medzi snímkami kamery (60 Hz vs 30 Hz) → opravené
   (`lastFrameHadHand`); študent overil rámik a stavy na vlastnej kamere.
+- 01.11.2026 — 2.7 hotový: meranie odhalilo, že detekcia bežala v každom snímku renderu
+  (`currentTime` pri kamere plynie spojito) → `requestVideoFrameCallback`; render 45 → ~100 FPS.
+  Kamera reálne ~16,5 snímok/s (overené cez `presentedFrames`, aj 1280×720). Model zapísaný
+  do `CLAUDE.md`; `docs/` — kostry oboch príručiek podľa osnovy z pokynov.

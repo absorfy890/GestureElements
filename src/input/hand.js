@@ -62,9 +62,25 @@ export class HandTracker {
     constructor(landmarker, video) {
         this.landmarker = landmarker;
         this.video = video;
-        this.lastVideoTime = -1; // čas posledného spracovaného snímku videa (s)
+        this.lastVideoTime = -1; // čas posledného spracovaného snímku videa (s) — len záložný spôsob
+
+        // Nový snímok kamery: prehliadač zavolá callback presne pri každom novom snímku videa.
+        // (video.currentTime pri živej kamere plynie stále, nie po snímkach → nedá sa podľa neho.)
+        this.newFrame = false;
+        this.useFrameCallback = typeof video.requestVideoFrameCallback === 'function';
+        if (this.useFrameCallback) {
+            const onFrame = () => {
+                this.newFrame = true;
+                video.requestVideoFrameCallback(onFrame); // callback platí len raz → znova sa prihlásiť
+            };
+            video.requestVideoFrameCallback(onFrame);
+        }
         this.lastSeenMs = -Infinity; // kedy bola ruka naposledy detegovaná (ms)
         this.lastFrameHadHand = false; // bola ruka v naposledy spracovanom snímku?
+
+        // Na meranie výkonu: bežal model v poslednom update() a ako dlho (ms)?
+        this.ranDetection = false;
+        this.detectDuration = 0;
 
         this.state = 'lost';
         this.landmarks = null;   // 21 bodov { x, y, z }, x a y v rozsahu 0..1 obrazu kamery
@@ -88,9 +104,15 @@ export class HandTracker {
         let detected = false;
 
         // Kamera dáva ~30 snímok/s, obrazovka 60+ → ten istý snímok nespracovať dvakrát.
-        if (this.video.currentTime !== this.lastVideoTime) {
+        this.ranDetection = this.useFrameCallback
+            ? this.newFrame
+            : this.video.currentTime !== this.lastVideoTime; // záloha pre staré prehliadače
+        if (this.ranDetection) {
+            this.newFrame = false;
             this.lastVideoTime = this.video.currentTime;
+            const start = performance.now();
             detected = this.detect(timestampMs);
+            this.detectDuration = performance.now() - start;
             this.lastFrameHadHand = detected;
         }
 

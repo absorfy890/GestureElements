@@ -38,6 +38,7 @@ if (camera.video) {
 // Sledovanie ruky len vtedy, keď je kamera aj model; inak app.hand ostane null (myš).
 if (camera.video && hand.landmarker) {
     app.hand = new HandTracker(hand.landmarker, camera.video);
+    app.handDelegate = hand.delegate;
 }
 
 // Prístup z konzoly prehliadača pri ladení (len vo vývojovom režime).
