@@ -8,16 +8,25 @@
  */
 import { App } from './app.js';
 import { startCamera } from './input/camera.js';
+import { loadHandLandmarker } from './input/hand.js';
 
 const app = new App(document.getElementById('app'));
 app.start();
 
-// Kamera sa spúšťa až po scéne: scéna beží aj vtedy, keď kamera zlyhá (záložný vstup myšou).
-const { video, error } = await startCamera();
-if (video) {
-    console.log(`Kamera OK: ${video.videoWidth}×${video.videoHeight}`);
+// Kamera a model sa spúšťajú až po scéne: scéna beží aj vtedy, keď zlyhajú (záložný vstup myšou).
+// Obe úlohy bežia súčasne (Promise.all) — netreba čakať na jednu, kým začne druhá.
+const [camera, hand] = await Promise.all([startCamera(), loadHandLandmarker()]);
+
+if (camera.video) {
+    console.log(`Kamera OK: ${camera.video.videoWidth}×${camera.video.videoHeight}`);
 } else {
-    console.warn(`Kamera nedostupná → myš. ${error}`);
+    console.warn(`Kamera nedostupná → myš. ${camera.error}`);
+}
+
+if (hand.landmarker) {
+    console.log(`HandLandmarker OK (${hand.delegate})`);
+} else {
+    console.warn(`Model ruky nedostupný → myš. ${hand.error}`);
 }
 
 // Prístup z konzoly prehliadača pri ladení (len vo vývojovom režime).

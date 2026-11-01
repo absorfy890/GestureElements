@@ -6,7 +6,9 @@ s tieňmi, OrbitControls, pomocná mriežka), `package-lock.json` → funguje `n
 Krok 2.1 hotový: MediaPipe súbory lokálne, Vite ich servíruje.
 Krok 2.2 hotový: `src/input/camera.js` (`startCamera()` → `{ video, error }`), výsledok zatiaľ
 len v konzole.
-Ďalej: 2.3 — načítanie `HandLandmarker` (VIDEO, 1 ruka) v `src/input/hand.js`.
+Krok 2.3 hotový: `src/input/hand.js` (`loadHandLandmarker()` → `{ landmarker, delegate, error }`,
+GPU → záloha CPU), v `main.js` paralelne s kamerou (`Promise.all`).
+Ďalej: 2.4 — `detectForVideo` v slučke, len pri novom snímku videa (výstup: je ruka + 21 bodov).
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -28,8 +30,8 @@ Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myš
      overiť, že ich Vite servíruje (žiadne CDN, musí bežať offline).~~ (01.11.)
    - ~~2.2 Kamera: `getUserMedia` → `<video>`; ošetriť chyby (bez kamery, zamietnutý prístup)
      → záložný vstup myšou.~~ (01.11.)
-   - 2.3 Načítanie modelu: `HandLandmarker` v režime VIDEO, 1 ruka; modul `src/input/hand.js`
-     bez závislosti na Three.js (vracia „je ruka / nie“ + 21 bodov).
+   - ~~2.3 Načítanie modelu: `HandLandmarker` v režime VIDEO, 1 ruka; modul `src/input/hand.js`
+     bez závislosti na Three.js.~~ (01.11.) Výstup „je ruka / nie“ + 21 bodov → presunuté do 2.4.
    - 2.4 Detekcia: `detectForVideo` v slučke, len pri novom snímku videa.
    - 2.5 21 bodov na obrazovke: 2D canvas nad videom, zrkadlenie x → 1 − x.
    - 2.6 Strata ruky z kadru: stav „stratená“, indikátor, bez pádu aplikácie.
@@ -67,3 +69,5 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   dev server vracia model aj wasm (200, správne veľkosti, `application/wasm`).
 - 01.11.2026 — 2.2 hotový: kamera 640×480 OK (overil študent v Chrome), zamietnutý prístup →
   varovanie, scéna beží ďalej (overené aj v paneli prehliadača Claude).
+- 01.11.2026 — 2.3 hotový: `HandLandmarker OK (GPU)` u študenta v Chrome aj v paneli Claude;
+  sieť: wasm (SIMD) aj model len z localhost, žiadne CDN.
