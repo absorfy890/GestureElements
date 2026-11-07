@@ -11,8 +11,18 @@ import { startCamera } from './input/camera.js';
 import { loadHandLandmarker, HandTracker } from './input/hand.js';
 import { HandPreview } from './ui/handPreview.js';
 import { GestureRecognizer } from './input/gestures.js';
+import { loadHeightmap, HEIGHTMAP_URL } from './world/terrain.js';
 
-const app = new App(document.getElementById('app'));
+// Výšková mapa je malá a lokálna → počkáme na ňu pred vytvorením scény (terén ju potrebuje hneď).
+// Pri chybe heightmap = null → rovná zem, aplikácia beží ďalej.
+const terrainData = await loadHeightmap(HEIGHTMAP_URL);
+if (terrainData.heightmap) {
+    console.log(`Výšková mapa OK: ${terrainData.heightmap.width}×${terrainData.heightmap.height}`);
+} else {
+    console.warn(`${terrainData.error} → rovná zem.`);
+}
+
+const app = new App(document.getElementById('app'), terrainData.heightmap);
 app.start();
 
 // Kamera a model sa spúšťajú až po scéne: scéna beží aj vtedy, keď zlyhajú (záložný vstup myšou).

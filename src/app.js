@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, createCamera, createScene } from './world/sceneSetup.js';
-import { createGround } from './world/terrain.js';
+import { createGround, createHeightSampler } from './world/terrain.js';
 import { AimCursor } from './cast/aim.js';
 import { MouseInput } from './input/mouse.js';
 import { RateMeter, PerfOverlay } from './ui/fpsMeter.js';
@@ -23,14 +23,16 @@ const CAMERA_FRAME_MS = 1000 / 30; // trvanie jedného snímku kamery pri 30 sn�
 export class App {
     /**
      * @param {HTMLElement} container  prvok, do ktorého sa vloží plátno (canvas)
+     * @param {object|null} heightmap  výšková mapa (loadHeightmap); null = rovná zem
      */
-    constructor(container) {
+    constructor(container, heightmap = null) {
         this.container = container;
         this.renderer = createRenderer();
         this.camera = createCamera(window.innerWidth / window.innerHeight);
         this.scene = createScene();
-        this.ground = createGround();   // zem: na ňu sa mieri (raycast) a dopadajú na ňu živly
+        this.ground = createGround(heightmap);   // zem: na ňu sa mieri (raycast) a dopadajú na ňu živly
         this.scene.add(this.ground);
+        this.heightAt = createHeightSampler(heightmap); // (x, z) → výška zeme (balistika, bunky)
         this.aimCursor = new AimCursor(this.scene, this.camera, this.ground); // kurzor na zemi (kam sa mieri)
         this.timer = new THREE.Timer(); // čas medzi snímkami pre animácie (od V1)
         this.hand = null;               // HandTracker; null = bez kamery/modelu → len myš

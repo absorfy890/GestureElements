@@ -25,7 +25,13 @@ Krok 4 hotový (07.11.2026): rovná zem (`src/world/terrain.js`) namiesto mriež
 (`src/cast/aim.js`: `aimToNdc` — napísal študent, `AimCursor.aimAt` = raycast), myš
 (`src/input/mouse.js`); prednosť má ruka počas castu. Overené simulovaným zámerom a udalosťami
 myši; **na kamere ešte overí študent.** Rozhodnutie: mierenie = balistika (CLAUDE.md).
-Ďalej: statický terén z heightmapy (úloha 7. týždňa).
+Krok 5 hotový (07.11.2026) = **V1/1 statický terén z heightmapy**: `public/terrain/heightmap.png`
+(129×129, generuje `scripts/make-heightmap.js`), `loadHeightmap` (2D canvas → výšky 0..1),
+`createGround(heightmap)` (1 vrchol na pixel, `MAX_HEIGHT` = 10 — zvolil študent, vrcholové farby
+podľa výšky a sklonu, tiene), `createHeightSampler` → `app.heightAt(x, z)` (bilineárne, `null` mimo
+terénu); kurzor sa natáča podľa normály svahu. Cyklus posunu vrcholov a prvú verziu `heightAt` písal
+študent, Claude prepísal načisto. Overené v paneli myšou (podvrhnutá `app.mouse.aim`).
+Ďalej (8. týždeň): náhľad balistickej dráhy + `groundState`.
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -105,6 +111,8 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   SHA-256 `fbc2a300…3607cde1`.
 - Chyba CSP „unsafe-eval … chrome-extension://…“ z `content.js` v konzole pochádza z rozšírenia
   prehliadača, nie z nášho kódu (v inkognito nie je).
+- Raycast na terén 128×128 (~33 tis. trojuholníkov) trvá ~2 ms (panel Claude) — 1× za snímok OK;
+  pri balistike nehľadať dopad raycastom po krokoch, ale `heightAt` (porovnať y dráhy s výškou).
 - Na Windows `TaskStop` zastaví len `npx`, proces Vite (node) beží ďalej → zastaviť podľa PID.
 - Test bez kamery: umelé video z canvasu (`canvas.captureStream()`) → `HandPreview` a pod.
   Snímky panela Claude orezávajú pravý dolný roh (artefakt snímky, nie chyba rozloženia).
@@ -180,3 +188,14 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   Drobnosť na neskôr (môže urobiť študent): `1000 / 30` v `app.js` → pomenovaná konštanta.
   Ďalej: krok 4 (rovná zem + kurzor ruky) — prepočet `intent.aim` → NDC pre `Raycaster` si študent
   premyslí pri úlohe.
+- 07.11.2026 — V1/1 terén z heightmapy (úloha FlowSavvy, termín 8.11.): rozhodnutia — heightmap ako
+  PNG v `public/` generovaný skriptom (Node + zlib, bez knižníc), 129 px = 128 políčok → vrchol =
+  pixel; vrcholové farby namiesto textúry (rovnaký mechanizmus neskôr pre `groundState`); výška
+  v bode cez `createHeightSampler` (fabrika/uzáver, nie trieda; `App.ground` ostal Mesh).
+  Študent napísal cyklus posunu vrcholov (opravy: veľkosť vs. počet segmentov, chýbajúca mierka,
+  tiene, duplicitný kód) a pokus o `heightAt` (čiarka v indexe `[row, col]`, `round` namiesto
+  `floor` + zlomku, `lerp` na číslach) → Claude prepísal; vysvetlené `lerp`/`smoothstep` na
+  príkladoch. `heightAt` overené proti raycastu (1000 bodov, max. rozdiel 0,017). Dokumentácia:
+  systémová 3.2 (terén, výška v bode, kurzor na svahu), 3.3; používateľská 4.2 (veta o teréne).
+  Necommitnuté — commituje študent.
+

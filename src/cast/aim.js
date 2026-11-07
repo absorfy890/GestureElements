@@ -3,14 +3,15 @@
  * Modul:    cast/aim.js — mierenie na zem
  * Autor:    Vladyslav Krykun
  * Dátum:    07.11.2026
- * Verzia:   0.1 (V0)
+ * Verzia:   0.2 (V1)
  * Popis:    Kurzor na zemi = miesto, kam sa mieri. Pozná len zámer (aim 0..1), nie ruku
  *           ani myš → oba vstupy používajú ten istý kód. Neskôr (V1) aj náhľad trajektórie.
  */
 import * as THREE from 'three';
 
-const CURSOR_RADIUS = 0.6;   // vonkajší polomer krúžku (jednotky scény)
-const CURSOR_LIFT = 0.02;    // výška nad zemou — inak by sa krúžok „bil“ so zemou (z-fighting)
+const CURSOR_RADIUS = 0.3;   // vonkajší polomer krúžku (jednotky scény)
+const CURSOR_LIFT = 0.1;    // odsadenie od zeme pozdĺž normály — inak z-fighting a zanáranie do svahu
+const UP = new THREE.Vector3(0, 1, 0);
 
 /**
  * Prevedie bod mierenia na NDC (normalizované súradnice zariadenia) pre Raycaster.
@@ -34,12 +35,12 @@ export class AimCursor {
         this.raycaster = new THREE.Raycaster(); // jeden na celý čas — nevytvárať v každom snímku
 
         const geometry = new THREE.RingGeometry(CURSOR_RADIUS * 0.7, CURSOR_RADIUS, 32);
+        geometry.rotateX(-Math.PI / 2); // RingGeometry leží v XY → položiť do XZ (lícom hore, +Y), ako zem
         // MeshBasicMaterial nereaguje na svetlo → kurzor je rovnako jasný v tieni aj na slnku.
         const material = new THREE.MeshBasicMaterial({ color: 0xff7020, transparent: true, opacity: 0.9 });
         this.mesh = new THREE.Mesh(geometry, material);
         this.mesh.name = 'aimCursor';
-        this.mesh.rotation.x = -Math.PI / 2; // RingGeometry leží v XY ako PlaneGeometry → položiť na zem
-        this.mesh.position.y = CURSOR_LIFT;  // aj pred prvým moveTo nad zemou (inak z-fighting)
+        this.mesh.visible = false; // kým sa nemieri, kurzor nie je vidno
         scene.add(this.mesh);
     }
 
@@ -55,17 +56,23 @@ export class AimCursor {
             this.hide();
             return null;
         }
-        const point = hits[0].point; // najbližší zásah
-        this.moveTo(point);
+        const { point, face } = hits[0]; // najbližší zásah; face = zasiahnutý trojuholník
+        // face.normal je v súradniciach objektu; zem nie je posunutá ani otočená → platí aj vo svete.
+        this.moveTo(point, face.normal);
         return point;
     }
 
     /**
-     * Presunie kurzor na bod zeme a zobrazí ho.
-     * Vstup:  point — THREE.Vector3 na zemi (napr. výsledok raycastu). Výstup: žiadny.
+     * Presunie kurzor na bod zeme, natočí ho podľa svahu a zobrazí ho.
+     * Vstup:  point — THREE.Vector3 na zemi (napr. výsledok raycastu),
+     *         normal — jednotkový THREE.Vector3 kolmý na zem v tom bode (predvolene hore).
+     * Výstup: žiadny.
      */
-    moveTo(point) {
-        this.mesh.position.set(point.x, point.y + CURSOR_LIFT, point.z);
+    moveTo(point, normal = UP) {
+        // Otočenie, ktoré prevedie „hore“ (+Y) na normálu → krúžok leží rovnobežne so svahom.
+        this.mesh.quaternion.setFromUnitVectors(UP, normal);
+        // Odsadiť pozdĺž normály (nie len v y): na strmom svahu by posun hore krúžok nevzdialil od zeme.
+        this.mesh.position.copy(point).addScaledVector(normal, CURSOR_LIFT);
         this.mesh.visible = true;
     }
 

@@ -72,6 +72,7 @@ pomalý pohyb ku kamere nevystrelí — výstrel potrebuje päsť, prudký pohyb
 Úder rob tak, aby ruka ostala v zábere (nie príliš blízko ku kamere).
 
 Bez kamery (alebo keď sa nekúzli rukou) ukazuje krúžok na zemi miesto pod kurzorom myši.
+Zem je kopcovitý terén; krúžok leží na svahu tak, ako je svah naklonený.
 Scénu otáčaš ťahaním myšou, približuješ kolieskom.
 
 ## 5. Popis vstupných a výstupných súborov

@@ -121,11 +121,40 @@ pauza, kým sa môže začať nový zber.
 zámery (záložný vstup) a pridanie druhej ruky, ďalších živlov či variantov kúziel nemení zvyšok
 programu. Rozpoznávač je trieda s inštanciou na ruku.
 
+**Terén z výškovej mapy** (`world/terrain.js`). Výšková mapa (heightmap) je šedotónový obrázok
+`public/terrain/heightmap.png` 129 × 129 px: jas pixela 0..255 → výška 0..1, násobená
+`MAX_HEIGHT` (10 jednotiek). Obrázok vytvára pomocný skript `scripts/make-heightmap.js`
+(súčet 4 oktáv hodnotového šumu so semienkom, normalizácia, mocnina 1,6 — plochejšie údolia,
+strmšie vrcholy; zápis PNG bez knižníc cez `zlib`); dá sa nahradiť aj ručne nakresleným obrázkom
+rovnakej veľkosti. Pixely sa čítajú v prehliadači cez 2D canvas (`drawImage` → `getImageData`,
+kanál R) — `main.js` počká na mapu pred vytvorením scény; pri chybe je zem rovná.
+Zem je `PlaneGeometry` 40 × 40 so 128 × 128 políčkami → 129 × 129 vrcholov = 1 vrchol na pixel,
+v rovnakom poradí (riadky od z = −20 po z = +20, v riadku zľava doprava), takže vrchol `i`
+dostane výšku `heights[i]` bez prevzorkovania. Geometria sa otočí do roviny XZ už pri vytvorení
+(`rotateX`), mesh nie je posunutý ani otočený → súradnice vrcholov = svetové súradnice.
+Po posunutí vrcholov `computeVertexNormals` prepočíta normály (osvetlenie svahov); terén
+vrhá aj prijíma tiene. Farba je **vrcholová** (atribút `color`, `vertexColors`): podľa výšky
+plynulé prechody (`smoothstep` + `lerp`) piesok → tráva → les → skala, strmý svah (malá zložka y
+normály) → skala. Rovnakým mechanizmom bude bunkový automat (`groundState`) ukazovať horenie
+a vlhkosť — zmenou farby vrcholov.
+
+**Výška v bode** (`createHeightSampler`). Balistika a bunkový automat potrebujú výšku zeme
+v ľubovoľnom bode (x, z) rýchlo, bez raycastu (ten testuje tisíce trojuholníkov). Bod sa prevedie
+na súradnice mriežky `col = (x / 40 + 0,5) · 128` (podobne `row` zo z); celá časť určí políčko
+(4 susedné pixely), desatinná časť `tx`, `tz` polohu v ňom. Výška = bilineárna interpolácia:
+`lerp` na hornom a dolnom okraji políčka podľa `tx`, medzi nimi podľa `tz`. Mimo terénu vracia
+`null`; rovná zem = mapa 2 × 2 núl (ten istý výpočet). Overené proti raycastu zvislo nadol
+na 1000 náhodných bodoch: priemerný rozdiel 0,001, najviac 0,017 jednotky (zem je
+z trojuholníkov, interpolácia bilineárna — líšia sa len vnútri políčka).
+
 **Mierenie na zem** (`cast/aim.js`). Ruka (`intent.aim`) aj myš (`MouseInput.aim`) dávajú bod
 v rovnakom tvare: `{ x, y }` v rozsahu 0..1, y dole. Bod sa prevedie na NDC (−1..+1, y hore,
 `aimToNdc`), `Raycaster.setFromCamera` z neho vytvorí lúč z polohy kamery cez daný bod obrazovky
 a `intersectObject` nájde jeho priesečník so zemou; tam sa presunie kurzor (krúžok). Lúč, ktorý
-zem nepretne (mieri sa na oblohu), kurzor skryje. Prednosť má ruka počas castu (fáza `charge`
+zem nepretne (mieri sa na oblohu), kurzor skryje. Na svahu sa krúžok natočí podľa normály
+zasiahnutého trojuholníka (`face.normal`, `quaternion.setFromUnitVectors(hore, normála)`)
+a odsadí sa od zeme pozdĺž normály o `CURSOR_LIFT` = 0,05 — inak by sa časť krúžku zanorila
+do svahu. Prednosť má ruka počas castu (fáza `charge`
 alebo `aim`), inak myš nad plátnom. Vo V1 sa lúč použije len ako smer hodu a miesto dopadu
 určí balistická dráha (parabola) a jej priesečník s terénom.
 
@@ -139,11 +168,12 @@ dlhšie ako 33 ms (napr. CPU), frekvencia o svetle nič nehovorí a upozornenie 
 
 | Modul | Trieda / funkcia | Úloha |
 |---|---|---|
-| `src/main.js` | — | vstupný bod: vytvorí `App`, spustí kameru a model (paralelne), pripojí ich |
-| `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`; slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
+| `src/main.js` | — | vstupný bod: načíta výškovú mapu, vytvorí `App`, spustí kameru a model (paralelne), pripojí ich |
+| `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`, zem (`ground`) a výška zeme (`heightAt`); slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
 | `src/world/sceneSetup.js` | `createRenderer`, `createCamera`, `createScene` | základ scény Three.js |
-| `src/world/terrain.js` | `createGround()`, `GROUND_SIZE` | zem 40 × 40 (V0 rovná), prijíma tiene |
-| `src/cast/aim.js` | `aimToNdc(aim)`, `AimCursor` | prevod bodu mierenia na NDC; kurzor na zemi: `aimAt(aim)` → bod alebo `null`, `moveTo`, `hide` |
+| `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null` |
+| `scripts/make-heightmap.js` | — | pomocný nástroj (nie súčasť aplikácie): vygeneruje `public/terrain/heightmap.png` |
+| `src/cast/aim.js` | `aimToNdc(aim)`, `AimCursor` | prevod bodu mierenia na NDC; kurzor na zemi: `aimAt(aim)` → bod alebo `null`, `moveTo(bod, normála)` (natočí podľa svahu), `hide` |
 | `src/input/mouse.js` | `MouseInput` | poloha myši nad plátnom ako `aim` (0..1); `null` mimo plátna |
 | `src/input/camera.js` | `startCamera(width, height)` | `getUserMedia` → `{ video, error }`; pri chybe `video = null` (záloha myš) |
 | `src/input/hand.js` | `loadHandLandmarker()` | načíta wasm a model z `public/mediapipe/` → `{ landmarker, delegate, error }` |
