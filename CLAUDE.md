@@ -36,9 +36,29 @@ Modely a wasm držať lokálne v `public/` — žiadne CDN, aplikácia musí be�
 
 ## Architektúra (moduly v `src/`)
 main (vstup), app (slučka, resize), world/sceneSetup (renderer, kamera, svetlá),
-input/hand, input/gestures (state machine), world/terrain, world/groundState (bunkový
+input/hand, input/handFeatures (príznaky pohybu), input/gestures (state machine), world/terrain, world/groundState (bunkový
 automat), fx/fire, fx/water, cast/aim, ui. Kód komentovať podľa pokynov (hlavičky
 súborov: autor, dátum, verzia; funkcie: popis vstupov/výstupov).
+
+### Gestá a rozšíriteľnosť (rozhodnuté 02.11.2026)
+Inšpirácia: ohýbanie živlov z „Avatar: The Last Airbender“ (voda = tai-chi, plynulé
+pull → push; oheň = Northern Shaolin, priamy prudký úder; zem = Hung Gar, zdvihnúť → udrieť).
+Gestá sú dynamické (pohyb v čase), nie len statické pózy. Gramatika castu pre všetky živly:
+**zber → formovanie/mierenie → uvoľnenie**, zrušenie = rozptýlenie / strata ruky.
+Živel určuje pohyb zberu (nie menu). V1 = oheň + voda, jedna ruka.
+Rozhrania navrhujeme pre N rúk a varianty kúziel, implementujeme len 1 ruku (nie kód „do zásoby“):
+1. **Príznaky pohybu** = čistá funkcia jednej ruky (body + jej história → čísla:
+   otvorenosť, hĺbka podľa veľkosti dlane, rýchlosť, smer dlane). Pre 2 ruky sa volá 2×.
+2. **Rozpoznávač gest** = trieda, inštancia na ruku; žiadny globálny stav v module.
+3. **Výstup rozpoznávača = zámer (intent)**, nie gesto:
+   `{ hand, element, variant, phase: 'charge'|'aim'|'release'|'cancel', aim, power }`.
+   Efekty a terén poznajú len zámer, nie ruky. Myš generuje tie isté zámery (záložný vstup).
+   Podtypy kúziel = nová hodnota `variant`.
+4. **Kombá** = samostatná vrstva nad zámermi oboch rúk (neskôr, V3), rozpoznávače nemení.
+Terén (groundState): bunka drží nezávislé veličiny (teplo, vlhkosť, kameň) → interakcie
+živlov (oheň + voda → para) vznikajú pravidlami, nový živel = nová veličina.
+Pozor pri 2 rukách: označenie Left/Right v MediaPipe predpokladá zrkadlený obraz — my dávame
+nezrkadlený → označenia prehodiť.
 
 ## Pravidlá
 - Spôsob práce (31.10.2026): projekt robíme so študentom spolu postupne, nie tak, že Claude

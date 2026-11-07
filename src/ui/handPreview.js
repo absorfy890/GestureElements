@@ -52,7 +52,14 @@ export class HandPreview {
         Object.assign(this.canvas.style, { position: 'absolute', inset: '0' });
         this.ctx = this.canvas.getContext('2d');
 
-        this.root.append(video, this.canvas);
+        // Text na ladenie (príznaky ruky, neskôr gesto): v hornej časti panelu nad videom.
+        this.info = document.createElement('pre');
+        Object.assign(this.info.style, {
+            position: 'absolute', left: '0', top: '0', right: '0', margin: '0', padding: '3px 5px',
+            font: '11px/1.3 monospace', color: '#fff', background: 'rgba(0,0,0,0.55)',
+        });
+
+        this.root.append(video, this.canvas, this.info);
         container.appendChild(this.root);
 
         this.state = null;
@@ -70,6 +77,17 @@ export class HandPreview {
         }
         this.state = state;
         this.root.style.borderColor = STATE_COLORS[state];
+    }
+
+    /**
+     * Zobrazí riadky textu nad videom (na ladenie: príznaky ruky, stav gesta).
+     * Vstup:  lines — pole reťazcov. Výstup: žiadny.
+     */
+    showInfo(lines) {
+        const text = lines.join('\n');
+        if (text !== this.info.textContent) { // DOM meniť len pri zmene (volá sa v každom snímku)
+            this.info.textContent = text;
+        }
     }
 
     /**

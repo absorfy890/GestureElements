@@ -17,14 +17,18 @@ Krok 2.6 hotový: `HandTracker.state` = tracking / holding (posledné body ešte
 Krok 2.7 hotový → **krok 2 (hand tracking) hotový.** Panel výkonu (`src/ui/fpsMeter.js`),
 nový snímok cez `requestVideoFrameCallback`, rozhodnutie o modeli v `CLAUDE.md`, kostra
 `docs/` (používateľská + systémová príručka, Markdown).
-Ďalej: krok 3 — prvý návrh gest (štart / potvrdiť / zrušiť) z landmarkov, výpis stavu.
+Krok 3 hotový (02.11.2026): príznaky ruky (`src/input/handFeatures.js`), merania pohybov
+(záznamník R), `src/input/gestures.js` — `GestureRecognizer` pre oheň (zber päsťou → mierenie →
+úder s otvorením / zrušenie švihom, vyhasnutím, stratou ruky), výstup = zámer (intent); stav
+castu v náhľade a konzole. Navyše upozornenie „Málo svetla“ (`src/ui/lightHint.js`).
+Ďalej: krok 4 — rovná zem + kurzor ruky ako raycast na zem (z `intent.aim`).
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
 - **V1 — minimum:** terén (statická heightmap); jedna ruka; oheň a voda; cast (štart → náhľad
   → potvrdenie/zrušenie); terén reaguje (horí, mokne, voda hasí); záložný vstup myšou;
   About; dokumentácia; zip.
-  - **Výkon — detekcia ruky mimo hlavného vlákna:** `detectForVideo` beží synchrónne
+  - **Výkon — detekcia ruky mimo hlavného vlákna (voliteľné, ak bude čas — plán 02.11.):** `detectForVideo` beží synchrónne
     ~22 ms (GPU, notebook 144 Hz) a v tom čase sa nekreslí → presunúť HandLandmarker
     do Web Workera (snímok cez `createImageBitmap` / `VideoFrame`, výsledok cez `postMessage`);
     preveriť, koľko z 22 ms je kopírovanie GPU ↔ CPU. Cieľ: render nezávislý od detekcie.
@@ -33,6 +37,22 @@ nový snímok cez `requestVideoFrameCallback`, rozhodnutie o modeli v `CLAUDE.md
   druhá ruka; kombá; pohyb klávesnicou.
 - **V4 — vízia:** deformovateľný terén ako vo Valheime, horiace stromy/tráva, fyzika častíc.
 Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myšou).
+
+## Plán do konca semestra (dohodnuté 02.11.2026)
+Cieľ: **V1 (minimum) 100 % hotové do konca 11. týždňa semestra**; V2–V4 len ak ostane čas.
+Študent má veľa iných predmetov → rátame ~2 pracovné relácie týždenne, posledný týždeň = rezerva.
+Týždeň 2.–8.11. = 7. týždeň semestra (potvrdil študent) → do konca 11. týždňa (6.12.) ostáva 5 týždňov.
+
+| Týždeň | Termín | Úlohy | Hotovo, keď |
+|---|---|---|---|
+| 7 | 2.–8.11. | V0 krok 4: rovná zem + kurzor ruky (raycast z `intent.aim`); statický terén z heightmapy | kurzor sleduje ruku po teréne |
+| 8 | 9.–15.11. | náhľad trajektórie (parabola ako granát) pri mierení; myš dáva tie isté zámery; `groundState` (bunky: teplo, vlhkosť) + zobrazenie na teréne | cast myšou aj rukou ukáže trajektóriu a dopad zmení bunky |
+| 9 | 16.–22.11. | `fx/fire` (vlastné častice/shader); terén horí; About pri štarte | výstrel ohňa zapáli miesto dopadu |
+| 10 | 23.–29.11. | voda: gesto (kruh → push, prahy už namerané), `fx/water`, terén mokne, voda hasí | celý V1 funguje |
+| 11 | 30.11.–6.12. | **rezerva**; dokumentácia do PDF, zdrojové texty, zip, test na inom PC (CPU), výkonové presety | odovzdateľný zip |
+
+Ak meškáme (v tomto poradí škrtáme): Web Worker pre detekciu (len ak bude čas) → jednoduchšie gesto
+vody (push bez kruhu) → jednoduchšie častice. Čo nie je v tabuľke, je ideál (V2–V4).
 
 ## Plán týždňa 27.10–2.11 (V0)
 1. ~~`npm ci`, prázdna Three.js scéna na Vite (kostra z cvičenia 5).~~ (31.10.)
@@ -51,7 +71,16 @@ Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myš
    - ~~2.7 Záver: FPS ≥ 30, rozhodnutie do `CLAUDE.md`, kostra `docs/` (vstup ruky), commit.~~ (01.11.)
    Overenie: body na ruke kontroluje študent na vlastnej kamere; Claude screenshotmi len
    štart bez chýb v konzole (alebo nahraté video cez fake webcam).
-3. Prvý návrh gest (štart / potvrdiť / zrušiť) z landmarkov, výpis stavu.
+3. ~~Prvý návrh gest (štart / potvrdiť / zrušiť) z landmarkov, výpis stavu.~~ (02.11.)
+   Rozhodnutie 02.11.: krok 3 = jeden úplný cyklus pre **oheň** (zber = päsť ≥ 0,4 s;
+   uvoľnenie = úder ku kamere s otvorením dlane; zrušenie = švih do strany / strata ruky).
+   **Voda presunutá do V1** (s `fx/water`): zber = kruh otvorenou dlaňou ku kamere (súčet
+   uhla otočenia smeru pohybu ≥ ~300° za ≤ 2 s pri rýchlosti > 0,8), uvoľnenie = push
+   (dlaň ≥ 20 % väčšia ako na začiatku mierenia, ~0,2 s). Merania sú v Poznámkach.
+   Zem (V3): dlaň dole (ny > 0,5), zdvihnúť → prudko dole (vy > 8).
+   - ~~3a Príznaky ruky (`src/input/handFeatures.js`) + výpis v náhľade~~ (02.11.)
+   - ~~3b Merania pohybov (záznamník R, `src/ui/featureRecorder.js`)~~ (02.11.)
+   - ~~3c `src/input/gestures.js` — stavový automat castu (oheň), výpis stavu.~~ (02.11.)
 4. Rovná zem + kurzor ruky ako raycast na zem.
 5. ~~Založiť kostru dokumentácie (`docs/`).~~ (01.11., spolu s 2.7)
 
@@ -83,6 +112,21 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   Meranie: `metadata.presentedFrames` z `requestVideoFrameCallback` za 3 s.
 - Prvá detekcia trvá ~2,4 s (kompilácia GPU shaderov MediaPipe) — pri štarte nevadí;
   ak bude About/úvodná obrazovka, zahriať model za ňou.
+- 02.11.2026 potvrdené: príčina ~16,5 snímok/s je automatická expozícia (málo svetla) —
+  pri jasnej lampe kamera dáva 30 snímok/s. Dlhá expozícia = aj rozmazanie → pri prudkých
+  pohyboch sa ruka stráca.
+- Merania 3b (02.11.2026, pravá ruka, záznam R, 3 s; rýchlosť v dlaniach/s, hĺbka = ln-rast dlane/s):
+  | pohyb | open | speed max | depth min/max | iné |
+  |---|---|---|---|---|
+  | pokoj, dlaň ku kamere | 0,89–0,91 | 0,15 | −0,14/+0,16 | nz −0,99 |
+  | pomaly do strán | 0,71–0,87 | 4,0 | −0,43/+0,46 | |
+  | rýchly švih do strán | 0,78–0,95 | 14,6 | −1,2/+1,5 | 3 snímky bez ruky; nz preskočí až na +0,96 (rozmazanie) |
+  | voda: push ku kamere | 0,85–0,92 | 0,6 | −0,8/+1,0 | |
+  | voda: kruh dlaňou | 0,85–0,92 | 3,4 | −1,0/+1,0 | |
+  | oheň: päsť → úder s otvorením | 0,00–0,94 | 2,4 | −2,6/+4,2 | bez straty ruky; päsť má ny až 0,9 |
+  | zem: dlaň dole, hore → prudko dole | 0,03–1,00 | 19,0 | −3,5/+2,9 | vy až 18,5; ny 0,35–0,99; 1 snímka bez ruky |
+  | päsť ↔ dlaň pomaly | 0,00–0,94 | 0,6 | −0,7/+1,2 | zmena tvaru ruky sama hýbe hĺbkou do ~1,2 |
+  Prvé 3 merania ~17 snímok/s, ďalšie 24–30 (svetlo).
 - Ak budú gestá „lepkavé“: kratšia expozícia cez `track.applyConstraints`
   (`exposureMode: 'manual'`) — nie všetky kamery to vedia. Do používateľskej príručky:
   hrať pri dobrom osvetlení.
@@ -110,3 +154,15 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   (`currentTime` pri kamere plynie spojito) → `requestVideoFrameCallback`; render 45 → ~100 FPS.
   Kamera reálne ~16,5 snímok/s (overené cez `presentedFrames`, aj 1280×720). Model zapísaný
   do `CLAUDE.md`; `docs/` — kostry oboch príručiek podľa osnovy z pokynov.
+- 02.11.2026 — krok 3: inšpirácia „Avatar“ (živly = bojové umenia; gramatika zber → mierenie →
+  uvoľnenie), rozhodnutia o rozšíriteľnosti (2 ruky, varianty, kombá) zapísané do `CLAUDE.md`.
+  3a príznaky ruky (študent napísal `openness`), overené 8 testami na kamere. Príčina ~16 snímok/s
+  = automatická expozícia (pri lampe 30) → upozornenie „Málo svetla“. 3b merania 8 pohybov
+  záznamníkom R → prahy. Rozsah zúžený na oheň (voda → V1). 3c `GestureRecognizer`: 12 testov
+  na podvrhnutých príznakoch + simulácia cez `App`; študent overil celý cyklus na kamere
+  (úder, švih, strata ruky, vyhasnutie po pomalom povolení päste — pridané na jeho podnet).
+  Dokumentácia: systémová 3.2/3.3 (príznaky, merania, automat, zámer), používateľská 4.2 (gestá).
+- 02.11.2026 — plán do konca semestra: V1 do konca 11. týždňa (6.12.), ~2 relácie/týždeň,
+  11. týždeň = rezerva; úlohy rozpísané vo FlowSavvy (zoznam TUKE) s termínmi na koniec týždňa.
+  Titulná strana dokumentácie → úloha 11. týždňa (dokumentácia do PDF). Krok 3 zatiaľ
+  necommitnutý — commituje študent sám.

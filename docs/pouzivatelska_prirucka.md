@@ -40,15 +40,42 @@ Vpravo dole je náhľad kamery (zrkadlový obraz). Keď je ruka v zábere, kresl
 | oranžový | ruka na chvíľu vypadla (body sú bledšie), program ešte čaká |
 | červený | ruka nie je v zábere |
 
+V hornej časti náhľadu sú riadky textu: prvý (`cast`) ukazuje stav kúzla (pozri 4.2),
+ďalšie sú pomocné čísla o ruke (otvorenosť, smer dlane, rýchlosť) na ladenie.
+
 Vľavo hore je panel výkonu: snímky vykreslenia za sekundu a frekvencia a trvanie detekcie ruky.
 
-Pre spoľahlivé sledovanie ruky odporúčame dobré osvetlenie a ruku celú v zábere.
+Pre spoľahlivé sledovanie ruky odporúčame dobré osvetlenie (svetlo dopadá na ruku, nie
+spoza nej ani priamo do kamery) a ruku celú v zábere. Pri slabom svetle kamera predlžuje expozíciu: dáva menej
+snímok za sekundu (napr. 16 namiesto 30) a obraz pri pohybe rozmazáva, takže sa ruka pri
+rýchlych pohyboch stráca. Ak kamera dlhšie ako 3 s dáva menej ako 22 snímok/s, hore
+v strede sa zobrazí oranžové upozornenie „Málo svetla“; po rozsvietení samo zmizne.
+
+### 4.2 Kúzlenie gestami (oheň)
+Kúzlo sa kúzli pravou rukou v troch krokoch — inšpirované ohýbaním ohňa zo seriálu
+„Avatar: The Last Airbender“ (priame, prudké údery):
+
+1. **Zber:** zovri ruku v päsť a podrž ju chvíľu nehybne. V náhľade kamery sa v riadku `cast`
+   plní pásik `🔥 zber █████` (asi 0,4 s).
+2. **Mierenie:** keď sa ukáže `🔥 mieri`, pohybuj päsťou — kúzlo mieri tam, kam ruka
+   (ako v zrkadle: ruka doprava = cieľ doprava).
+3. **Výstrel:** prudko udri päsťou smerom ku kamere a pri tom otvor dlaň. Zobrazí sa `🔥 VÝSTREL!`.
+
+Kúzlo **zrušíš** (zobrazí sa `✖ zrušené`) ktorýmkoľvek z týchto spôsobov:
+- rýchly švih rukou do strany („striasť“ kúzlo);
+- pomaly povolíš päsť a necháš dlaň otvorenú (oheň zhasne);
+- dáš ruku preč zo záberu kamery.
+
+Po výstrele alebo zrušení môžeš o pol sekundy začať nový zber. Samotné otvorenie dlane ani
+pomalý pohyb ku kamere nevystrelí — výstrel potrebuje päsť, prudký pohyb a otvorenie naraz.
+Úder rob tak, aby ruka ostala v zábere (nie príliš blízko ku kamere).
 
 ## 5. Popis vstupných a výstupných súborov
 Program nečíta ani nezapisuje súbory používateľa.
 
 ## 6. Obmedzenia programu
-TODO. Frekvenciu sledovania ruky obmedzuje kamera (niektoré kamery notebookov dávajú ~15 snímok/s).
+TODO. Frekvenciu sledovania ruky obmedzuje kamera; pri slabom svetle kamery notebookov dávajú
+~15 snímok/s namiesto 30 (pozri 4.1).
 
 ## 7. Chybové hlásenia
 
@@ -58,6 +85,7 @@ TODO. Frekvenciu sledovania ruky obmedzuje kamera (niektoré kamery notebookov d
 | … Kamera nebola nájdená. | počítač nemá kameru | ovládať myšou |
 | … Kameru používa iný program. | kameru drží iná aplikácia | zatvoriť ju, obnoviť stránku |
 | Model ruky nedostupný → myš. | wasm alebo model sa nenačítal | spustiť `npm ci` (skopíruje wasm), obnoviť stránku |
+| Málo svetla — kamera dáva N snímok/s. (v aplikácii) | slabé osvetlenie → dlhá expozícia kamery | rozsvietiť izbu, svetlo na ruku |
 
 TODO: zobraziť hlásenia aj v aplikácii, nielen v konzole.
 

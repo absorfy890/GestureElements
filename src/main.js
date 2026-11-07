@@ -10,6 +10,7 @@ import { App } from './app.js';
 import { startCamera } from './input/camera.js';
 import { loadHandLandmarker, HandTracker } from './input/hand.js';
 import { HandPreview } from './ui/handPreview.js';
+import { GestureRecognizer } from './input/gestures.js';
 
 const app = new App(document.getElementById('app'));
 app.start();
@@ -39,9 +40,23 @@ if (camera.video) {
 if (camera.video && hand.landmarker) {
     app.hand = new HandTracker(hand.landmarker, camera.video);
     app.handDelegate = hand.delegate;
+    // Rozpoznávač gest pre jednu ruku (V1); pri dvoch rukách by bol na každú ruku jeden.
+    app.gestures = new GestureRecognizer('right', camera.video.videoWidth, camera.video.videoHeight);
 }
 
 // Prístup z konzoly prehliadača pri ladení (len vo vývojovom režime).
+// V produkčnom zostavení je import.meta.env.DEV = false → tento kód aj záznamník vypadnú.
 if (import.meta.env.DEV) {
     window.app = app;
+
+    // Záznam príznakov ruky klávesom R (súhrn v konzole) — na určenie prahov gest.
+    if (app.hand) {
+        const { FeatureRecorder } = await import('./ui/featureRecorder.js');
+        app.recorder = new FeatureRecorder();
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                app.recorder.request();
+            }
+        });
+    }
 }
