@@ -60,6 +60,13 @@ Terén (groundState): bunka drží nezávislé veličiny (teplo, vlhkosť, kame�
 Pozor pri 2 rukách: označenie Left/Right v MediaPipe predpokladá zrkadlený obraz — my dávame
 nezrkadlený → označenia prehodiť.
 
+### Mierenie = balistika (rozhodnuté 07.11.2026)
+Kúzlo vzniká pred kamerou („v ruke“ hráča); `intent.aim` určuje **smer hodu** (lúč z kamery cez
+bod aim, `cast/aim.js`), nie priamo miesto dopadu. Dráha je parabola (štart + v·t + ½·g·t²),
+rýchlosť a gravitácia podľa živlu (`intent.element`); dopad = prvý priesečník dráhy s terénom
+(kopec v ceste kúzlo zastaví). Kurzor ukazuje miesto dopadu. Uhol hodu obmedziť (ruka „do neba“
+nesmie hodiť pod seba). V0 kurzor (priesečník lúča so zemou) je len medzikrok.
+
 ## Pravidlá
 - Spôsob práce (31.10.2026): projekt robíme so študentom spolu postupne, nie tak, že Claude
   vygeneruje celú úlohu. Úlohu deliť na malé kroky (jedna funkcia/myšlienka); pred krokom

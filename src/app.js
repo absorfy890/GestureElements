@@ -10,11 +10,15 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, createCamera, createScene } from './world/sceneSetup.js';
+import { createGround } from './world/terrain.js';
+import { AimCursor } from './cast/aim.js';
+import { MouseInput } from './input/mouse.js';
 import { RateMeter, PerfOverlay } from './ui/fpsMeter.js';
 import { snapshotFeatures, HandMotion } from './input/handFeatures.js';
 import { LightHint } from './ui/lightHint.js';
 
 const CAST_RESULT_MS = 1000; // ako dlho ukazovať v náhľade výsledok castu (výstrel / zrušené)
+const CAMERA_FRAME_MS = 1000 / 30; // trvanie jedného snímku kamery pri 30 snímkach/s
 
 export class App {
     /**
@@ -25,6 +29,9 @@ export class App {
         this.renderer = createRenderer();
         this.camera = createCamera(window.innerWidth / window.innerHeight);
         this.scene = createScene();
+        this.ground = createGround();   // zem: na ňu sa mieri (raycast) a dopadajú na ňu živly
+        this.scene.add(this.ground);
+        this.aimCursor = new AimCursor(this.scene, this.camera, this.ground); // kurzor na zemi (kam sa mieri)
         this.timer = new THREE.Timer(); // čas medzi snímkami pre animácie (od V1)
         this.hand = null;               // HandTracker; null = bez kamery/modelu → len myš
         this.preview = null;            // HandPreview (náhľad kamery s bodmi); null = bez kamery
@@ -43,6 +50,7 @@ export class App {
         this.lightHint = new LightHint(container); // „málo svetla“, keď kamera dáva málo snímok
 
         container.appendChild(this.renderer.domElement);
+        this.mouse = new MouseInput(this.renderer.domElement);
 
         // Ovládanie kamery myšou (ako na CV5): otáčanie, priblíženie, bez posunu pod zem.
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -73,10 +81,26 @@ export class App {
         this.timer.update(timestamp);
         this.updateHand(timestamp);
         this.controls.update();
+        this.updateAim();
         this.renderer.render(this.scene, this.camera);
 
         this.renderMeter.tick(timestamp);
         this.updatePerf();
+    }
+
+    /**
+     * Kurzor na zemi: prednosť má ruka počas castu (charge / aim), inak poloha myši;
+     * bez oboch skrytý. Vstup/výstup: žiadny.
+     */
+    updateAim() {
+        const intent = this.gestures?.intent;
+        if (intent && (intent.phase === 'charge' || intent.phase === 'aim')) {
+            this.aimCursor.aimAt(intent.aim);
+        } else if (this.mouse.aim) {
+            this.aimCursor.aimAt(this.mouse.aim);
+        } else {
+            this.aimCursor.hide();
+        }
     }
 
     /** Zobrazí aktuálne merania výkonu v PerfOverlay. Vstup/výstup: žiadny. */
@@ -108,7 +132,7 @@ export class App {
         // Výnimka: pomalá detekcia (napr. CPU, > 33 ms) sama preskakuje snímky → vtedy frekvencia
         // nehovorí nič o svetle a upozornenie sa nemení (0 = „nevieme“).
         const d = this.detectMeter;
-        this.lightHint.update(d.avgDuration > 1000 / 30 ? 0 : d.perSecond, timestamp);
+        this.lightHint.update(d.avgDuration > CAMERA_FRAME_MS ? 0 : d.perSecond, timestamp);
         this.updateHandFeatures(timestamp);
         this.updateGestures(timestamp);
         // Text sa skladá v každom snímku (mení sa aj bez nového snímku kamery: odpočet merania,

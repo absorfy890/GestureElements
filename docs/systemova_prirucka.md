@@ -121,6 +121,14 @@ pauza, kým sa môže začať nový zber.
 zámery (záložný vstup) a pridanie druhej ruky, ďalších živlov či variantov kúziel nemení zvyšok
 programu. Rozpoznávač je trieda s inštanciou na ruku.
 
+**Mierenie na zem** (`cast/aim.js`). Ruka (`intent.aim`) aj myš (`MouseInput.aim`) dávajú bod
+v rovnakom tvare: `{ x, y }` v rozsahu 0..1, y dole. Bod sa prevedie na NDC (−1..+1, y hore,
+`aimToNdc`), `Raycaster.setFromCamera` z neho vytvorí lúč z polohy kamery cez daný bod obrazovky
+a `intersectObject` nájde jeho priesečník so zemou; tam sa presunie kurzor (krúžok). Lúč, ktorý
+zem nepretne (mieri sa na oblohu), kurzor skryje. Prednosť má ruka počas castu (fáza `charge`
+alebo `aim`), inak myš nad plátnom. Vo V1 sa lúč použije len ako smer hodu a miesto dopadu
+určí balistická dráha (parabola) a jej priesečník s terénom.
+
 **Upozornenie „Málo svetla“** (`ui/lightHint.js`). Pri slabom svetle kamera predlžuje expozíciu,
 dáva menej snímok (namerané ~16 namiesto 30 snímok/s) a obraz pri pohybe rozmazáva. Frekvenciu
 kamery poznáme z frekvencie detekcie (beží na každom novom snímku). Ak je dlhšie ako 3 s pod 22,
@@ -132,8 +140,11 @@ dlhšie ako 33 ms (napr. CPU), frekvencia o svetle nič nehovorí a upozornenie 
 | Modul | Trieda / funkcia | Úloha |
 |---|---|---|
 | `src/main.js` | — | vstupný bod: vytvorí `App`, spustí kameru a model (paralelne), pripojí ich |
-| `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`; slučka `renderFrame`, `updateHand`, `updatePerf` |
+| `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`; slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
 | `src/world/sceneSetup.js` | `createRenderer`, `createCamera`, `createScene` | základ scény Three.js |
+| `src/world/terrain.js` | `createGround()`, `GROUND_SIZE` | zem 40 × 40 (V0 rovná), prijíma tiene |
+| `src/cast/aim.js` | `aimToNdc(aim)`, `AimCursor` | prevod bodu mierenia na NDC; kurzor na zemi: `aimAt(aim)` → bod alebo `null`, `moveTo`, `hide` |
+| `src/input/mouse.js` | `MouseInput` | poloha myši nad plátnom ako `aim` (0..1); `null` mimo plátna |
 | `src/input/camera.js` | `startCamera(width, height)` | `getUserMedia` → `{ video, error }`; pri chybe `video = null` (záloha myš) |
 | `src/input/hand.js` | `loadHandLandmarker()` | načíta wasm a model z `public/mediapipe/` → `{ landmarker, delegate, error }` |
 | `src/input/hand.js` | `HandTracker` | `update(čas)`: detekcia pri novom snímku, stavy ruky; `state`, `landmarks`, `present` |
@@ -150,7 +161,7 @@ Moduly `input/` a `ui/` nezávisia od Three.js; MediaPipe importuje len `input/h
 Poradie volaní v jednom snímku: `App.renderFrame` → `updateHand` (`HandTracker.update` →
 `LightHint.update` → `updateHandFeatures` (`snapshotFeatures`, `HandMotion.push`) →
 `updateGestures` (`GestureRecognizer.update`) → `HandPreview.showInfo` / `setState` / `draw`)
-→ `OrbitControls.update` → `renderer.render` → `updatePerf`.
+→ `OrbitControls.update` → `updateAim` (`AimCursor.aimAt`) → `renderer.render` → `updatePerf`.
 
 ## 4. Preklad programu
 

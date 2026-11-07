@@ -58,7 +58,8 @@ Kúzlo sa kúzli pravou rukou v troch krokoch — inšpirované ohýbaním ohňa
 1. **Zber:** zovri ruku v päsť a podrž ju chvíľu nehybne. V náhľade kamery sa v riadku `cast`
    plní pásik `🔥 zber █████` (asi 0,4 s).
 2. **Mierenie:** keď sa ukáže `🔥 mieri`, pohybuj päsťou — kúzlo mieri tam, kam ruka
-   (ako v zrkadle: ruka doprava = cieľ doprava).
+   (ako v zrkadle: ruka doprava = cieľ doprava). Cieľ ukazuje oranžový krúžok na zemi
+   (zobrazí sa už počas zberu).
 3. **Výstrel:** prudko udri päsťou smerom ku kamere a pri tom otvor dlaň. Zobrazí sa `🔥 VÝSTREL!`.
 
 Kúzlo **zrušíš** (zobrazí sa `✖ zrušené`) ktorýmkoľvek z týchto spôsobov:
@@ -69,6 +70,9 @@ Kúzlo **zrušíš** (zobrazí sa `✖ zrušené`) ktorýmkoľvek z týchto spô
 Po výstrele alebo zrušení môžeš o pol sekundy začať nový zber. Samotné otvorenie dlane ani
 pomalý pohyb ku kamere nevystrelí — výstrel potrebuje päsť, prudký pohyb a otvorenie naraz.
 Úder rob tak, aby ruka ostala v zábere (nie príliš blízko ku kamere).
+
+Bez kamery (alebo keď sa nekúzli rukou) ukazuje krúžok na zemi miesto pod kurzorom myši.
+Scénu otáčaš ťahaním myšou, približuješ kolieskom.
 
 ## 5. Popis vstupných a výstupných súborov
 Program nečíta ani nezapisuje súbory používateľa.

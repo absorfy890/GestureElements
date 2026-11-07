@@ -21,7 +21,11 @@ Krok 3 hotový (02.11.2026): príznaky ruky (`src/input/handFeatures.js`), meran
 (záznamník R), `src/input/gestures.js` — `GestureRecognizer` pre oheň (zber päsťou → mierenie →
 úder s otvorením / zrušenie švihom, vyhasnutím, stratou ruky), výstup = zámer (intent); stav
 castu v náhľade a konzole. Navyše upozornenie „Málo svetla“ (`src/ui/lightHint.js`).
-Ďalej: krok 4 — rovná zem + kurzor ruky ako raycast na zem (z `intent.aim`).
+Krok 4 hotový (07.11.2026): rovná zem (`src/world/terrain.js`) namiesto mriežky, kurzor
+(`src/cast/aim.js`: `aimToNdc` — napísal študent, `AimCursor.aimAt` = raycast), myš
+(`src/input/mouse.js`); prednosť má ruka počas castu. Overené simulovaným zámerom a udalosťami
+myši; **na kamere ešte overí študent.** Rozhodnutie: mierenie = balistika (CLAUDE.md).
+Ďalej: statický terén z heightmapy (úloha 7. týždňa).
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -36,6 +40,8 @@ castu v náhľade a konzole. Navyše upozornenie „Málo svetla“ (`src/ui/lig
 - **V3 — varianty a druhá ruka:** prúd vs. guľa vody, kus vs. stena kameňa; zem a vzduch;
   druhá ruka; kombá; pohyb klávesnicou.
 - **V4 — vízia:** deformovateľný terén ako vo Valheime, horiace stromy/tráva, fyzika častíc.
+  Nápad študenta (07.11.): low-poly 3D model ruky v scéne, ktorý opakuje pohyby skutočnej ruky
+  (z 21 bodov), nahradí náhľad kamery a je miestom, odkiaľ kúzlo vylieta.
 Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myšou).
 
 ## Plán do konca semestra (dohodnuté 02.11.2026)
@@ -81,7 +87,7 @@ vody (push bez kruhu) → jednoduchšie častice. Čo nie je v tabuľke, je ide�
    - ~~3a Príznaky ruky (`src/input/handFeatures.js`) + výpis v náhľade~~ (02.11.)
    - ~~3b Merania pohybov (záznamník R, `src/ui/featureRecorder.js`)~~ (02.11.)
    - ~~3c `src/input/gestures.js` — stavový automat castu (oheň), výpis stavu.~~ (02.11.)
-4. Rovná zem + kurzor ruky ako raycast na zem.
+4. ~~Rovná zem + kurzor ruky ako raycast na zem.~~ (07.11.)
 5. ~~Založiť kostru dokumentácie (`docs/`).~~ (01.11., spolu s 2.7)
 
 ## Otvorené otázky na cvičiaceho
@@ -166,3 +172,11 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   11. týždeň = rezerva; úlohy rozpísané vo FlowSavvy (zoznam TUKE) s termínmi na koniec týždňa.
   Titulná strana dokumentácie → úloha 11. týždňa (dokumentácia do PDF). Krok 3 zatiaľ
   necommitnutý — commituje študent sám.
+- 07.11.2026 — krok 3 medzitým commitnutý (`1a44060`). Prehliadka kódu so študentom (bez zmien
+  v kóde): zhora nadol, po toku dát kamera → `hand` → `handFeatures` → `gestures` → zámer, potom
+  `main`/`app`, `ui/` (prehľad), `sceneSetup` (podrobne, vrátane tieňovej kamery). Študent odpovedal
+  na kontrolné otázky; ťažšie miesta: časové stavy `HandTracker` (bez nových snímok tracking → lost,
+  holding nie), znamienka normály dlane, x v nezrkadlenom obraze (pohyb doprava → vx < 0).
+  Drobnosť na neskôr (môže urobiť študent): `1000 / 30` v `app.js` → pomenovaná konštanta.
+  Ďalej: krok 4 (rovná zem + kurzor ruky) — prepočet `intent.aim` → NDC pre `Raycaster` si študent
+  premyslí pri úlohe.

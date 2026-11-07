@@ -5,7 +5,7 @@
  * Dátum:    31.10.2026
  * Verzia:   0.1 (V0)
  * Popis:    Funkcie na vytvorenie renderera, kamery a scény so svetlami.
- *           Terén a efekty sa pridávajú v ďalších moduloch.
+ *           Terén (world/terrain.js) a efekty sa pridávajú v ďalších moduloch.
  */
 import * as THREE from 'three';
 
@@ -56,11 +56,6 @@ export function createScene() {
     const s = 20; // polovica rozmeru oblasti tieňovej kamery
     Object.assign(sun.shadow.camera, { left: -s, right: s, top: s, bottom: -s, near: 1, far: 60 });
     scene.add(sun);
-
-    // Pomocná mriežka na orientáciu v prázdnej scéne; nahradí ju terén (úloha V0: rovná zem).
-    const grid = new THREE.GridHelper(40, 40, 0x335066, 0x6d8aa0);
-    grid.name = 'debugGrid';
-    scene.add(grid);
 
     return scene;
 }
