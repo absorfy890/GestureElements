@@ -135,8 +135,39 @@ dostane výšku `heights[i]` bez prevzorkovania. Geometria sa otočí do roviny 
 Po posunutí vrcholov `computeVertexNormals` prepočíta normály (osvetlenie svahov); terén
 vrhá aj prijíma tiene. Farba je **vrcholová** (atribút `color`, `vertexColors`): podľa výšky
 plynulé prechody (`smoothstep` + `lerp`) piesok → tráva → les → skala, strmý svah (malá zložka y
-normály) → skala. Rovnakým mechanizmom bude bunkový automat (`groundState`) ukazovať horenie
-a vlhkosť — zmenou farby vrcholov.
+normály) → skala. Rovná zem (bez mapy) má tiež 128 × 128 políčok, aby bunky stavu zeme vždy
+zodpovedali vrcholom.
+
+**Stav zeme** (`world/groundState.js`, bunkový automat). Mriežka buniek nad terénom, **bunka =
+vrchol terénu** (129 × 129). Každá veličina je samostatné pole `Float32Array` s hodnotami 0..1 —
+teraz `heat` (teplo) a `moisture` (vlhkosť); nový živel = nová veličina, vzájomné pôsobenie živlov
+= pravidlá v `update(dt)`. Dopad kúzla `hit(živel, x, z, sila)` podľa tabuľky `HIT` (oheň → teplo,
+polomer 2,5) pridá veličinu v kruhu: bod sveta → mriežka rovnako ako pri `heightAt`, prechádza sa
+len štvorec okolo kruhu (orezaný na okraje) a prírastok klesá od stredu k okraju plynulo
+(`1 − smoothstep(d, 0, r)`) → okrúhla škvrna bez ostrých hrán; hodnoty sú zhora obmedzené na 1.
+Pravidlá zatiaľ: teplo vyhasína (z 1 na 0 za 20 s), vlhkosť vysychá (za 50 s); krok simulácie je
+obmedzený na 0 … 0,1 s (po skrytí karty by stav inak „preskočil“ dlhý čas; záporný krok by
+vyhasínanie obrátil na zahrievanie celého terénu — odhalil to test s ručným časom).
+
+**Výstrel → dopad.** `App.updateAim` si v každom snímku mierenia zapamätá miesto dopadu
+(`lastImpact`); udalosť `release` príde až v ďalšom snímku (keď sa už nemieri), preto sa použije
+zapamätané miesto: `groundState.hit(živel, x, z, power)`. Zatiaľ okamžite — let kúzla po dráhe
+príde s efektom ohňa. Zrušený cast (aj pustenie počas zberu) zem nemení. Overené castom myšou
+s ručným časom: výstrel → teplo v mieste dopadu 0,99; zrušenie pravým tlačidlom a skoré pustenie
+→ 0; po 10 s 0,45. Modul nezávisí od Three.js.
+Overené v Node: stred 1,0 / pol polomeru 0,5 / okraj 0; symetria v osiach; 193 buniek (πr² ≈ 201);
+okraj mapy a bod mimo mapy bez chyby; `update` 0,08 ms.
+
+**Zobrazenie stavu** (`world/groundView.js`). Dve veličiny dvoma spôsobmi:
+- vlhkosť → **farba vrcholov**: mokrá zem je tmavšia (základná farba × (1 − 0,55 · vlhkosť));
+  základné farby (výška, sklon) sa pri vytvorení skopírujú a stav sa počíta vždy od nich;
+- teplo → **žiarenie** (`emissiveMap`): farba vrcholov ide do difúzneho svetla, takže rozpálené
+  miesto by v tieni bolo tmavé; žiarenie od osvetlenia nezávisí. Teplo sa zapíše do textúry
+  `DataTexture` 129 × 129 (pixel = bunka; tmavočervená → oranžová → žltkastá), ktorá sa na terén
+  mapuje cez jeho UV súradnice (riadok 0 terénu má v = 1 → riadky textúry otočené). Lineárne
+  filtrovanie robí medzi bunkami plynulý prechod.
+Obe sa prepíšu v každom snímku (~0,4 ms). Overené: kurzor položený na súradnice teplej škvrny stojí
+v jej strede (textúra nie je zrkadlená); farba mokrej bunky = základná × 0,56.
 
 **Výška v bode** (`createHeightSampler`). Balistika a bunkový automat potrebujú výšku zeme
 v ľubovoľnom bode (x, z) rýchlo, bez raycastu (ten testuje tisíce trojuholníkov). Bod sa prevedie
@@ -200,6 +231,8 @@ dlhšie ako 33 ms (napr. CPU), frekvencia o svetle nič nehovorí a upozornenie 
 | `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`, zem (`ground`) a výška zeme (`heightAt`); slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
 | `src/world/sceneSetup.js` | `createRenderer`, `createCamera`, `createScene` | základ scény Three.js |
 | `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`, `normalAt(heightAt, x, z)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null`; normála terénu v bode |
+| `src/world/groundState.js` | `GroundState` | stav zeme (bunkový automat): `heat`, `moisture`; `toGrid(x, z)`, `addAround(pole, x, z, polomer, prírastok)`, `hit(živel, x, z, sila)`, `update(dt)` |
+| `src/world/groundView.js` | `GroundView` | zobrazenie stavu na teréne: vlhkosť → farba vrcholov, teplo → `emissiveMap`; `update()` |
 | `scripts/make-heightmap.js` | — | pomocný nástroj (nie súčasť aplikácie): vygeneruje `public/terrain/heightmap.png` |
 | `src/cast/aim.js` | `aimToNdc(aim)`, `launchFromAim(aim, kamera, živel)`, `computeTrajectory(štart, rýchlosť, g, heightAt)` | bod mierenia → NDC; parametre hodu `{ start, velocity, gravity }`; parabolická dráha → `{ points, impact }` (`impact = null` bez dopadu) |
 | `src/cast/aim.js` | `AimCursor`, `TrajectoryLine` | kurzor v mieste dopadu: `moveTo(bod, normála)`, `hide`; čiara dráhy: `show(points)`, `hide` |
@@ -222,7 +255,8 @@ Poradie volaní v jednom snímku: `App.renderFrame` → `updateHand` (`HandTrack
 `updateGestures` (`GestureRecognizer.update`) → `HandPreview.showInfo` / `setState` / `draw`)
 → `updateMouse` (`MouseInput.update`) → `controls.enabled = !castIntent()` →
 `OrbitControls.update` → `updateAim` (`castIntent` → `launchFromAim` → `computeTrajectory` →
-`TrajectoryLine.show`, `AimCursor.moveTo`) → `renderer.render` → `updatePerf`.
+`TrajectoryLine.show`, `AimCursor.moveTo`) → `GroundState.update(dt)` → `GroundView.update` →
+`renderer.render` → `updatePerf`.
 
 ## 4. Preklad programu
 

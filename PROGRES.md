@@ -38,7 +38,13 @@ Krok 6 hotový (15.11.2026) = **V1/2 balistika + cast myšou**: `cast/aim.js` �
 `MouseInput` dáva tie isté zámery ako ruka (ľavé tlačidlo: zber → mierenie → pustenie = výstrel;
 pravé / Esc / mimo plátna = zrušenie); otáčanie kamery pravým tlačidlom, počas castu vypnuté.
 Náhľad dráhy len počas castu. **Na kamere (dráha rukou) a kotvu na svojom displeji ešte overí študent.**
-Ďalej (8. týždeň, termín 15.11. → mešká): `groundState` (bunky: teplo, vlhkosť) + zobrazenie.
+Krok 7 hotový (22.11.2026) = **V1/3 stav zeme**: `world/groundState.js` (`GroundState`: bunka =
+vrchol terénu, `heat` + `moisture` 0..1, `hit` s plynulým okrajom, `update` = vyhasínanie/vysychanie),
+`world/groundView.js` (vlhkosť → stmavenie farby vrcholov, teplo → `emissiveMap` z `DataTexture`),
+rovná zem tiež 128 × 128; výstrel (`release`) → `hit` v mieste dopadu (zatiaľ okamžite, bez letu).
+Úloha 8. týždňa „stav buniek“ splnená (s týždňovým oneskorením).
+Ďalej (9. týždeň, termín 22.11. → mešká): `fx/fire` (let ohnivej gule po dráhe, záblesk), terén horí
+(horenie, dohorenie, spálené miesto), About pri štarte.
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -222,5 +228,11 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   Na podnet študenta kotva ruky (štart mimo lúča → oblúk vidno zboku). Myš: 6 scenárov
   s ručným časom + kontrola v scéne. Nápad študenta „poloha ruky = kotva, natočenie = mierenie“
   → V4 (PROGRES + FlowSavvy, po V1). Dokumentácia: systémová 3.2/3.3, používateľská 4.2.
-  Commituje študent.
+  Commitnuté študentom.
+- 21.–22.11.2026 — `groundState` v 3 krokoch (dáta → zobrazenie → výstrel). Dáta overené v Node
+  (stred/okraj, symetria, okraje mapy, 0,08 ms), zobrazenie snímkami (kurzor v strede škvrny =
+  textúra nie je zrkadlená; vlhkosť 0,45 → 0,55, na tmavom lese slabo vidno), výstrel castom myšou
+  s ručným časom. Test odhalil: záporné dt (čas „dozadu“) obrátilo vyhasínanie na zahrievanie celého
+  terénu → dt obmedzené na 0..0,1 s. Študentovi vysvetlené, prečo rovná zem má tiež 128 × 128.
+  Necommitnuté — commituje študent.
 

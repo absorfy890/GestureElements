@@ -10,7 +10,9 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, createCamera, createScene } from './world/sceneSetup.js';
-import { createGround, createHeightSampler, normalAt } from './world/terrain.js';
+import { createGround, createHeightSampler, normalAt, GROUND_SIZE, FLAT_SEGMENTS } from './world/terrain.js';
+import { GroundState } from './world/groundState.js';
+import { GroundView } from './world/groundView.js';
 import { AimCursor, TrajectoryLine, launchFromAim, computeTrajectory } from './cast/aim.js';
 import { MouseInput } from './input/mouse.js';
 import { RateMeter, PerfOverlay } from './ui/fpsMeter.js';
@@ -19,6 +21,7 @@ import { LightHint } from './ui/lightHint.js';
 
 const CAST_RESULT_MS = 1000; // ako dlho ukazovať v náhľade výsledok castu (výstrel / zrušené)
 const CAMERA_FRAME_MS = 1000 / 30; // trvanie jedného snímku kamery pri 30 snímkach/s
+const MAX_DT = 0.1; // najdlhší krok simulácie (s) — po skrytí karty by inak stav „preskočil“ dlhý čas
 
 export class App {
     /**
@@ -33,6 +36,10 @@ export class App {
         this.ground = createGround(heightmap);   // zem: dopadajú na ňu živly
         this.scene.add(this.ground);
         this.heightAt = createHeightSampler(heightmap); // (x, z) → výška zeme (balistika, bunky)
+        // Stav zeme: bunka = vrchol terénu (rovná zem má rovnako FLAT_SEGMENTS + 1 vrcholov).
+        const cells = heightmap ?? { width: FLAT_SEGMENTS + 1, height: FLAT_SEGMENTS + 1 };
+        this.groundState = new GroundState(cells.width, cells.height, GROUND_SIZE);
+        this.groundView = new GroundView(this.ground, this.groundState);
         this.aimCursor = new AimCursor(this.scene);       // kurzor na zemi = miesto dopadu
         this.trajectory = new TrajectoryLine(this.scene); // náhľad dráhy kúzla pri mierení
         this.timer = new THREE.Timer(); // čas medzi snímkami pre animácie (od V1)
@@ -45,6 +52,7 @@ export class App {
         this.recorder = null;           // FeatureRecorder (len vo vývojovom režime, nastaví main.js)
         this.gestures = null;           // GestureRecognizer (nastaví main.js, keď je ruka); null = len myš
         this.castResult = null;         // { phase, until } — posledné uvoľnenie / zrušenie na zobrazenie
+        this.lastImpact = null;         // miesto dopadu z posledného snímku mierenia (THREE.Vector3) alebo null
 
         // Meranie výkonu: snímky vykreslenia a detekcie ruky za sekundu (cieľ ≥ 30).
         this.renderMeter = new RateMeter();
@@ -90,6 +98,9 @@ export class App {
         this.controls.enabled = !this.castIntent();
         this.controls.update();
         this.updateAim();
+        // dt v rozsahu 0..MAX_DT: záporný krok (čas „dozadu“) by vyhasínanie obrátil na zahrievanie.
+        this.groundState.update(THREE.MathUtils.clamp(this.timer.getDelta(), 0, MAX_DT));
+        this.groundView.update();
         this.renderer.render(this.scene, this.camera);
 
         this.renderMeter.tick(timestamp);
@@ -115,12 +126,14 @@ export class App {
     updateAim() {
         const intent = this.castIntent();
         if (!intent) {
+            this.lastImpact = null;
             this.trajectory.hide();
             this.aimCursor.hide();
             return;
         }
         const { start, velocity, gravity } = launchFromAim(intent.aim, this.camera, intent.element);
         const { points, impact } = computeTrajectory(start, velocity, gravity, this.heightAt);
+        this.lastImpact = impact; // výstrel (release) príde v ďalšom snímku, keď sa už nemieri
         this.trajectory.show(points);
         if (impact) {
             this.aimCursor.moveTo(impact, normalAt(this.heightAt, impact.x, impact.z));
@@ -215,7 +228,8 @@ export class App {
     }
 
     /**
-     * Zmena fázy castu (z ruky aj z myši): výpis do konzoly; pri konci castu si zapamätá výsledok
+     * Zmena fázy castu (z ruky aj z myši): výpis do konzoly; pri výstrele dopad na zem (zatiaľ
+     * okamžite — let kúzla príde s efektom ohňa); pri konci castu si zapamätá výsledok
      * (uvoľnenie / zrušenie trvá jediný snímok → v náhľade sa ukazuje ešte CAST_RESULT_MS).
      * Vstup: event — zámer pri zmene fázy alebo null, timestamp — čas v ms. Výstup: žiadny.
      */
@@ -224,6 +238,10 @@ export class App {
             return;
         }
         console.log(`Cast: ${event.phase} (${event.element}, ${event.hand})`);
+        if (event.phase === 'release' && this.lastImpact) {
+            const { x, z } = this.lastImpact;
+            this.groundState.hit(event.element, x, z, event.power);
+        }
         if (event.phase === 'release' || event.phase === 'cancel') {
             this.castResult = { phase: event.phase, until: timestamp + CAST_RESULT_MS };
         }

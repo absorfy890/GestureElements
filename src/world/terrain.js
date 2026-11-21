@@ -13,6 +13,8 @@ import * as THREE from 'three';
 // v sceneSetup.js (±20) → tiene sú na celej zemi.
 export const GROUND_SIZE = 40;
 export const MAX_HEIGHT = 10; // výška najsvetlejšieho pixela (biela = 1) v jednotkách scény
+// Políčka rovnej zeme (bez mapy) — ako mapa 129 px → bunky stavu zeme (groundState) = vrcholy.
+export const FLAT_SEGMENTS = 128;
 
 // Farby terénu (vrcholové farby): podľa výšky piesok → tráva → les → skala; strmé svahy = skala.
 const SAND = new THREE.Color(0xc8b98a);
@@ -58,9 +60,9 @@ export async function loadHeightmap(url) {
  * Výstup: THREE.Mesh (meno 'ground'), vrhá aj prijíma tiene.
  */
 export function createGround(heightmap = null) {
-    // Jeden vrchol mriežky na pixel mapy → počet políčok = pixely − 1; rovná zem = 1 políčko.
-    const segmentsX = heightmap ? heightmap.width - 1 : 1;
-    const segmentsZ = heightmap ? heightmap.height - 1 : 1;
+    // Jeden vrchol mriežky na pixel mapy → počet políčok = pixely − 1.
+    const segmentsX = heightmap ? heightmap.width - 1 : FLAT_SEGMENTS;
+    const segmentsZ = heightmap ? heightmap.height - 1 : FLAT_SEGMENTS;
     const geometry = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE, segmentsX, segmentsZ);
     // PlaneGeometry leží v rovine XY → otočiť samotnú geometriu o −90° okolo X: vrcholy sú potom
     // priamo v XZ (y = výška) a mesh netreba otáčať.
