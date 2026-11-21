@@ -31,7 +31,14 @@ Krok 5 hotový (07.11.2026) = **V1/1 statický terén z heightmapy**: `public/te
 podľa výšky a sklonu, tiene), `createHeightSampler` → `app.heightAt(x, z)` (bilineárne, `null` mimo
 terénu); kurzor sa natáča podľa normály svahu. Cyklus posunu vrcholov a prvú verziu `heightAt` písal
 študent, Claude prepísal načisto. Overené v paneli myšou (podvrhnutá `app.mouse.aim`).
-Ďalej (8. týždeň): náhľad balistickej dráhy + `groundState`.
+Krok 6 hotový (15.11.2026) = **V1/2 balistika + cast myšou**: `cast/aim.js` — `launchFromAim`
+(smer = lúč cez aim, štart = kotva ruky `HAND_ANCHOR` vpravo dole v súradniciach kamery, uhol
+−80°…+60°, `BALLISTICS` podľa živlu), `computeTrajectory` (presný vzorec + bisekcia dopadu),
+`TrajectoryLine`; `normalAt` v `terrain.js`; kurzor = miesto dopadu (raycast vypadol).
+`MouseInput` dáva tie isté zámery ako ruka (ľavé tlačidlo: zber → mierenie → pustenie = výstrel;
+pravé / Esc / mimo plátna = zrušenie); otáčanie kamery pravým tlačidlom, počas castu vypnuté.
+Náhľad dráhy len počas castu. **Na kamere (dráha rukou) a kotvu na svojom displeji ešte overí študent.**
+Ďalej (8. týždeň, termín 15.11. → mešká): `groundState` (bunky: teplo, vlhkosť) + zobrazenie.
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -48,6 +55,12 @@ terénu); kurzor sa natáča podľa normály svahu. Cyklus posunu vrcholov a prv
 - **V4 — vízia:** deformovateľný terén ako vo Valheime, horiace stromy/tráva, fyzika častíc.
   Nápad študenta (07.11.): low-poly 3D model ruky v scéne, ktorý opakuje pohyby skutočnej ruky
   (z 21 bodov), nahradí náhľad kamery a je miestom, odkiaľ kúzlo vylieta.
+  Spolu s ním (rozhodnuté 15.11.): **poloha ruky v zábere → posun kotvy** (`HAND_ANCHOR`, odkiaľ
+  kúzlo letí), **natočenie zápästia/prstov → smer mierenia** (teraz smer = poloha stredu dlane).
+  Rozhranie: do zámeru pole napr. `origin`, `aim` z orientácie; mení sa len `launchFromAim`.
+  Riziká: pri ohni sa mieri päsťou (smer päste je nejednoznačný), normála dlane šumí pri rýchlom
+  pohybe (3b: nz skok až na +0,96) → vyhladzovanie; malý rozsah otočenia zápästia (~±40°) natiahnuť
+  na obrazovku. Ak bude V1 hotové skôr, dá sa skúsiť v rezervnom 11. týždni.
 Rozhodnutie: pohyb po scéne v minime nie je (pevná kamera / OrbitControls myšou).
 
 ## Plán do konca semestra (dohodnuté 02.11.2026)
@@ -141,6 +154,10 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   | zem: dlaň dole, hore → prudko dole | 0,03–1,00 | 19,0 | −3,5/+2,9 | vy až 18,5; ny 0,35–0,99; 1 snímka bez ruky |
   | päsť ↔ dlaň pomaly | 0,00–0,94 | 0,6 | −0,7/+1,2 | zmena tvaru ruky sama hýbe hĺbkou do ~1,2 |
   Prvé 3 merania ~17 snímok/s, ďalšie 24–30 (svetlo).
+- Balistika (15.11.2026): hod ide presne po lúči mierenia (oheň v = 18, g = 9,8, uhol −80°…+60°).
+  Kamera sa pozerá nadol (~−34°) → z východzej polohy kamery dopad najďalej z ≈ −9 (vzdialený okraj
+  terénu nedosiahne). Študent: nevadí (kamera sa dá otočiť), **„pocit“ hodu kalibrovať neskôr**
+  (možnosti: hod nad lúč o +20°, alebo vyššia rýchlosť; výpočet dosahov v denníku 15.11.).
 - Ak budú gestá „lepkavé“: kratšia expozícia cez `track.applyConstraints`
   (`exposureMode: 'manual'`) — nie všetky kamery to vedia. Do používateľskej príručky:
   hrať pri dobrom osvetlení.
@@ -197,5 +214,13 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   `floor` + zlomku, `lerp` na číslach) → Claude prepísal; vysvetlené `lerp`/`smoothstep` na
   príkladoch. `heightAt` overené proti raycastu (1000 bodov, max. rozdiel 0,017). Dokumentácia:
   systémová 3.2 (terén, výška v bode, kurzor na svahu), 3.3; používateľská 4.2 (veta o teréne).
-  Necommitnuté — commituje študent.
+  Commitnuté (`814f0a8`).
+- 14.–15.11.2026 — úlohy do cvičenia 17.11. (FlowSavvy, termín 15.11.): dráha, myš, `groundState`
+  + týždenné Anki. Dráha: študentovi vysvetlené vzorce (rovnomerne zrýchlený pohyb po osiach)
+  a bisekcia; overené v Node aj v prehliadači (rovná zem x = 10,001 vs. 10; 300 hodov na terén).
+  Hod presne po lúči nedosiahne vzdialený okraj terénu → študent: nevadí, kalibrovať neskôr.
+  Na podnet študenta kotva ruky (štart mimo lúča → oblúk vidno zboku). Myš: 6 scenárov
+  s ručným časom + kontrola v scéne. Nápad študenta „poloha ruky = kotva, natočenie = mierenie“
+  → V4 (PROGRES + FlowSavvy, po V1). Dokumentácia: systémová 3.2/3.3, používateľská 4.2.
+  Commituje študent.
 

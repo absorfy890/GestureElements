@@ -58,8 +58,9 @@ Kúzlo sa kúzli pravou rukou v troch krokoch — inšpirované ohýbaním ohňa
 1. **Zber:** zovri ruku v päsť a podrž ju chvíľu nehybne. V náhľade kamery sa v riadku `cast`
    plní pásik `🔥 zber █████` (asi 0,4 s).
 2. **Mierenie:** keď sa ukáže `🔥 mieri`, pohybuj päsťou — kúzlo mieri tam, kam ruka
-   (ako v zrkadle: ruka doprava = cieľ doprava). Cieľ ukazuje oranžový krúžok na zemi
-   (zobrazí sa už počas zberu).
+   (ako v zrkadle: ruka doprava = cieľ doprava). Kúzlo sa hádže ako granát: čiara ukazuje
+   jeho dráhu (oblúk) z ruky vpravo dole a oranžový krúžok miesto dopadu na zemi (zobrazia sa
+   už počas zberu). Kopec v ceste kúzlo zastaví.
 3. **Výstrel:** prudko udri päsťou smerom ku kamere a pri tom otvor dlaň. Zobrazí sa `🔥 VÝSTREL!`.
 
 Kúzlo **zrušíš** (zobrazí sa `✖ zrušené`) ktorýmkoľvek z týchto spôsobov:
@@ -71,9 +72,17 @@ Po výstrele alebo zrušení môžeš o pol sekundy začať nový zber. Samotné
 pomalý pohyb ku kamere nevystrelí — výstrel potrebuje päsť, prudký pohyb a otvorenie naraz.
 Úder rob tak, aby ruka ostala v zábere (nie príliš blízko ku kamere).
 
-Bez kamery (alebo keď sa nekúzli rukou) ukazuje krúžok na zemi miesto pod kurzorom myši.
-Zem je kopcovitý terén; krúžok leží na svahu tak, ako je svah naklonený.
-Scénu otáčaš ťahaním myšou, približuješ kolieskom.
+**Kúzlenie myšou** (bez kamery, alebo keď sa nekúzli rukou) má rovnaké kroky:
+1. **Zber:** stlač a drž ľavé tlačidlo myši (asi 0,4 s).
+2. **Mierenie:** drž tlačidlo a pohybuj myšou — dráha a krúžok dopadu idú za kurzorom.
+3. **Výstrel:** pusti ľavé tlačidlo.
+
+Zrušenie: pravé tlačidlo, kláves Esc, kurzor mimo okna scény, alebo pustenie tlačidla ešte
+počas zberu. Ak kúzli ruka, má prednosť pred myšou.
+
+Zem je kopcovitý terén; krúžok dopadu leží na svahu tak, ako je svah naklonený.
+Scénu otáčaš ťahaním **pravým** tlačidlom myši (ľavé patrí kúzleniu), približuješ kolieskom.
+Počas kúzlenia sa scéna neotáča.
 
 ## 5. Popis vstupných a výstupných súborov
 Program nečíta ani nezapisuje súbory používateľa.

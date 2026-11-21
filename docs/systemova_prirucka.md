@@ -147,16 +147,44 @@ na súradnice mriežky `col = (x / 40 + 0,5) · 128` (podobne `row` zo z); celá
 na 1000 náhodných bodoch: priemerný rozdiel 0,001, najviac 0,017 jednotky (zem je
 z trojuholníkov, interpolácia bilineárna — líšia sa len vnútri políčka).
 
-**Mierenie na zem** (`cast/aim.js`). Ruka (`intent.aim`) aj myš (`MouseInput.aim`) dávajú bod
-v rovnakom tvare: `{ x, y }` v rozsahu 0..1, y dole. Bod sa prevedie na NDC (−1..+1, y hore,
-`aimToNdc`), `Raycaster.setFromCamera` z neho vytvorí lúč z polohy kamery cez daný bod obrazovky
-a `intersectObject` nájde jeho priesečník so zemou; tam sa presunie kurzor (krúžok). Lúč, ktorý
-zem nepretne (mieri sa na oblohu), kurzor skryje. Na svahu sa krúžok natočí podľa normály
-zasiahnutého trojuholníka (`face.normal`, `quaternion.setFromUnitVectors(hore, normála)`)
-a odsadí sa od zeme pozdĺž normály o `CURSOR_LIFT` = 0,05 — inak by sa časť krúžku zanorila
-do svahu. Prednosť má ruka počas castu (fáza `charge`
-alebo `aim`), inak myš nad plátnom. Vo V1 sa lúč použije len ako smer hodu a miesto dopadu
-určí balistická dráha (parabola) a jej priesečník s terénom.
+**Cast myšou** (`input/mouse.js`) — záložný vstup, ktorý dáva **tie isté zámery** ako
+`GestureRecognizer` (`hand: 'mouse'`), takže zvyšok programu nevie, odkiaľ cast prišiel.
+Stlačenie ľavého tlačidla = `charge` (power 0 → 1 za 0,4 s, ako päsť), držanie = `aim`, pustenie =
+`release`; pustenie počas zberu, pravé tlačidlo, Esc a odchod kurzora z plátna (obdoba straty ruky)
+= `cancel`. Udalosti DOM len nastavia príznaky; automat krokuje v `update(čas)` s časom slučky
+vykresľovania (rovnaká časová os ako ruka). `release`/`cancel` trvá jeden snímok. Ľavé tlačidlo
+patrí castu → `OrbitControls` otáča pravým tlačidlom; počas castu je vypnuté (pravé tlačidlo vtedy
+len ruší). Overené 6 scenármi s ručným časom (celý cast, skoré pustenie, pravé tlačidlo, Esc,
+odchod z plátna, Esc/pravé bez castu) a v scéne: dráha je vidno len počas castu.
+
+**Mierenie = balistika** (`cast/aim.js`). Ruka (`intent.aim`) aj myš dávajú bod v rovnakom tvare:
+`{ x, y }` v rozsahu 0..1, y dole. Náhľad sa ukazuje len počas castu (`App.castIntent`: fáza
+`charge` alebo `aim`; prednosť má ruka, potom myš). Bod mierenia neurčuje miesto dopadu, ale **smer
+hodu** (`launchFromAim`): bod sa prevedie na NDC (−1..+1, y hore, `aimToNdc`) a cez
+`Vector3.unproject` na smer lúča z kamery. Kúzlo vzniká v **kotve ruky** — pevnom bode vpravo dole
+pred kamerou (`HAND_ANCHOR` = (0,6; −0,6; −1,5) v súradniciach kamery, do sveta cez
+`camera.localToWorld`). Kotva sa hýbe s kamerou, nie s mierením: mierenie len „otáča prstami“.
+Štart je tak mimo lúča pohľadu a dráhu vidno trochu zboku (pri štarte na lúči by sa javila ako
+čiara). Do kotvy sa neskôr postaví model ruky. Uhol hodu od vodorovnej roviny je obmedzený na −80° … +60° (ruka „do
+neba“ nesmie hodiť kúzlo pod seba), vodorovný smer ostáva. Rýchlosť a gravitácia závisia od živlu
+(tabuľka `BALLISTICS`; oheň: 18 jednotiek/s, 9,8 jednotiek/s²).
+
+Dráha (`computeTrajectory`) je rovnomerne zrýchlený pohyb po každej osi zvlášť:
+`p(t) = štart + v·t + ½·(0, −g, 0)·t²` — vodorovne rovnomerne, zvislo s gravitáciou → parabola.
+Poloha sa počíta presne zo vzorca (nie krokovaním rýchlosti — to by hromadilo chybu). Dráha sa
+prechádza po 0,02 s a v každom bode sa porovná výška dráhy s `heightAt`; prvý bod pod terénom
+znamená dopad medzi ním a predchádzajúcim bodom. Presné miesto nájde **bisekcia** (8× delenie
+intervalu na polovicu podľa toho, či je stred nad terénom) → presnosť 0,02 / 2⁸ s. Tak dopad
+zastaví aj kopec v ceste, nielen zem pod cieľom; rovnicu `y(t) = heightAt(x(t), z(t))` vzorcom
+vyriešiť nejde. Bez dopadu (kúzlo vyletí z terénu alebo letí dlhšie ako 4 s) je `impact = null`.
+Overené: rovná zem, štart (0, 0, 0), v = (5, 10, 0), g = 10 → dopad x = 10,001 (presne 10);
+300 náhodných hodov na terén — žiadny bod dráhy pred dopadom nie je pod terénom.
+
+Náhľad (`TrajectoryLine`): `THREE.Line` s bufferom na najdlhšiu dráhu vytvoreným raz; v každom
+snímku sa prepíšu súradnice a `setDrawRange` určí počet kreslených bodov. Kurzor (krúžok) stojí
+v mieste dopadu, natočený podľa normály terénu (`normalAt` — z rozdielov výšok `heightAt` v smere
+x a z, `quaternion.setFromUnitVectors(hore, normála)`) a odsadený pozdĺž normály o `CURSOR_LIFT`
+— inak by sa časť krúžku zanorila do svahu. Bez dopadu sa kurzor skryje.
 
 **Upozornenie „Málo svetla“** (`ui/lightHint.js`). Pri slabom svetle kamera predlžuje expozíciu,
 dáva menej snímok (namerané ~16 namiesto 30 snímok/s) a obraz pri pohybe rozmazáva. Frekvenciu
@@ -171,10 +199,11 @@ dlhšie ako 33 ms (napr. CPU), frekvencia o svetle nič nehovorí a upozornenie 
 | `src/main.js` | — | vstupný bod: načíta výškovú mapu, vytvorí `App`, spustí kameru a model (paralelne), pripojí ich |
 | `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`, zem (`ground`) a výška zeme (`heightAt`); slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
 | `src/world/sceneSetup.js` | `createRenderer`, `createCamera`, `createScene` | základ scény Three.js |
-| `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null` |
+| `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`, `normalAt(heightAt, x, z)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null`; normála terénu v bode |
 | `scripts/make-heightmap.js` | — | pomocný nástroj (nie súčasť aplikácie): vygeneruje `public/terrain/heightmap.png` |
-| `src/cast/aim.js` | `aimToNdc(aim)`, `AimCursor` | prevod bodu mierenia na NDC; kurzor na zemi: `aimAt(aim)` → bod alebo `null`, `moveTo(bod, normála)` (natočí podľa svahu), `hide` |
-| `src/input/mouse.js` | `MouseInput` | poloha myši nad plátnom ako `aim` (0..1); `null` mimo plátna |
+| `src/cast/aim.js` | `aimToNdc(aim)`, `launchFromAim(aim, kamera, živel)`, `computeTrajectory(štart, rýchlosť, g, heightAt)` | bod mierenia → NDC; parametre hodu `{ start, velocity, gravity }`; parabolická dráha → `{ points, impact }` (`impact = null` bez dopadu) |
+| `src/cast/aim.js` | `AimCursor`, `TrajectoryLine` | kurzor v mieste dopadu: `moveTo(bod, normála)`, `hide`; čiara dráhy: `show(points)`, `hide` |
+| `src/input/mouse.js` | `MouseInput` | záložný vstup: poloha myši `aim` (0..1, `null` mimo plátna) a cast myšou s rovnakými zámermi ako ruka — `update(čas)` → zámer pri zmene fázy; `intent`, `casting` |
 | `src/input/camera.js` | `startCamera(width, height)` | `getUserMedia` → `{ video, error }`; pri chybe `video = null` (záloha myš) |
 | `src/input/hand.js` | `loadHandLandmarker()` | načíta wasm a model z `public/mediapipe/` → `{ landmarker, delegate, error }` |
 | `src/input/hand.js` | `HandTracker` | `update(čas)`: detekcia pri novom snímku, stavy ruky; `state`, `landmarks`, `present` |
@@ -191,7 +220,9 @@ Moduly `input/` a `ui/` nezávisia od Three.js; MediaPipe importuje len `input/h
 Poradie volaní v jednom snímku: `App.renderFrame` → `updateHand` (`HandTracker.update` →
 `LightHint.update` → `updateHandFeatures` (`snapshotFeatures`, `HandMotion.push`) →
 `updateGestures` (`GestureRecognizer.update`) → `HandPreview.showInfo` / `setState` / `draw`)
-→ `OrbitControls.update` → `updateAim` (`AimCursor.aimAt`) → `renderer.render` → `updatePerf`.
+→ `updateMouse` (`MouseInput.update`) → `controls.enabled = !castIntent()` →
+`OrbitControls.update` → `updateAim` (`castIntent` → `launchFromAim` → `computeTrajectory` →
+`TrajectoryLine.show`, `AimCursor.moveTo`) → `renderer.render` → `updatePerf`.
 
 ## 4. Preklad programu
 

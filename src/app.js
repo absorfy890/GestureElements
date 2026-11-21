@@ -10,8 +10,8 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, createCamera, createScene } from './world/sceneSetup.js';
-import { createGround, createHeightSampler } from './world/terrain.js';
-import { AimCursor } from './cast/aim.js';
+import { createGround, createHeightSampler, normalAt } from './world/terrain.js';
+import { AimCursor, TrajectoryLine, launchFromAim, computeTrajectory } from './cast/aim.js';
 import { MouseInput } from './input/mouse.js';
 import { RateMeter, PerfOverlay } from './ui/fpsMeter.js';
 import { snapshotFeatures, HandMotion } from './input/handFeatures.js';
@@ -30,10 +30,11 @@ export class App {
         this.renderer = createRenderer();
         this.camera = createCamera(window.innerWidth / window.innerHeight);
         this.scene = createScene();
-        this.ground = createGround(heightmap);   // zem: na ňu sa mieri (raycast) a dopadajú na ňu živly
+        this.ground = createGround(heightmap);   // zem: dopadajú na ňu živly
         this.scene.add(this.ground);
         this.heightAt = createHeightSampler(heightmap); // (x, z) → výška zeme (balistika, bunky)
-        this.aimCursor = new AimCursor(this.scene, this.camera, this.ground); // kurzor na zemi (kam sa mieri)
+        this.aimCursor = new AimCursor(this.scene);       // kurzor na zemi = miesto dopadu
+        this.trajectory = new TrajectoryLine(this.scene); // náhľad dráhy kúzla pri mierení
         this.timer = new THREE.Timer(); // čas medzi snímkami pre animácie (od V1)
         this.hand = null;               // HandTracker; null = bez kamery/modelu → len myš
         this.preview = null;            // HandPreview (náhľad kamery s bodmi); null = bez kamery
@@ -55,7 +56,9 @@ export class App {
         this.mouse = new MouseInput(this.renderer.domElement);
 
         // Ovládanie kamery myšou (ako na CV5): otáčanie, priblíženie, bez posunu pod zem.
+        // Ľavé tlačidlo patrí castu → otáčanie pravým, priblíženie kolieskom (aj stredným).
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
         this.controls.target.set(0, 0, 0);
         this.controls.enableDamping = true;
         this.controls.maxPolarAngle = Math.PI * 0.49;
@@ -82,6 +85,9 @@ export class App {
     renderFrame(timestamp) {
         this.timer.update(timestamp);
         this.updateHand(timestamp);
+        this.updateMouse(timestamp);
+        // Počas castu kamera stojí: pravé tlačidlo vtedy len ruší cast, neotáča scénu.
+        this.controls.enabled = !this.castIntent();
         this.controls.update();
         this.updateAim();
         this.renderer.render(this.scene, this.camera);
@@ -91,17 +97,35 @@ export class App {
     }
 
     /**
-     * Kurzor na zemi: prednosť má ruka počas castu (charge / aim), inak poloha myši;
-     * bez oboch skrytý. Vstup/výstup: žiadny.
+     * Zámer práve prebiehajúceho castu (fáza charge / aim): prednosť má ruka, inak myš.
+     * Výstup: zámer alebo null (nikto necastuje).
+     */
+    castIntent() {
+        const hand = this.gestures?.intent;
+        if (hand && (hand.phase === 'charge' || hand.phase === 'aim')) {
+            return hand;
+        }
+        return this.mouse.casting ? this.mouse.intent : null;
+    }
+
+    /**
+     * Náhľad hodu počas castu: dráha od kotvy ruky po dopad a kurzor v mieste dopadu;
+     * mimo castu (alebo bez dopadu) skryté. Vstup/výstup: žiadny.
      */
     updateAim() {
-        const intent = this.gestures?.intent;
-        if (intent && (intent.phase === 'charge' || intent.phase === 'aim')) {
-            this.aimCursor.aimAt(intent.aim);
-        } else if (this.mouse.aim) {
-            this.aimCursor.aimAt(this.mouse.aim);
-        } else {
+        const intent = this.castIntent();
+        if (!intent) {
+            this.trajectory.hide();
             this.aimCursor.hide();
+            return;
+        }
+        const { start, velocity, gravity } = launchFromAim(intent.aim, this.camera, intent.element);
+        const { points, impact } = computeTrajectory(start, velocity, gravity, this.heightAt);
+        this.trajectory.show(points);
+        if (impact) {
+            this.aimCursor.moveTo(impact, normalAt(this.heightAt, impact.x, impact.z));
+        } else {
+            this.aimCursor.hide(); // kúzlo vyletí z terénu
         }
     }
 
@@ -180,10 +204,26 @@ export class App {
             return;
         }
         const event = this.gestures.update(timestamp, this.hand.state, this.handFeatures, this.handMotion);
+        this.onCastEvent(event, timestamp);
+    }
+
+    /**
+     * Krok castu myšou (záložný vstup). Vstup: timestamp — čas snímku v ms. Výstup: žiadny.
+     */
+    updateMouse(timestamp) {
+        this.onCastEvent(this.mouse.update(timestamp), timestamp);
+    }
+
+    /**
+     * Zmena fázy castu (z ruky aj z myši): výpis do konzoly; pri konci castu si zapamätá výsledok
+     * (uvoľnenie / zrušenie trvá jediný snímok → v náhľade sa ukazuje ešte CAST_RESULT_MS).
+     * Vstup: event — zámer pri zmene fázy alebo null, timestamp — čas v ms. Výstup: žiadny.
+     */
+    onCastEvent(event, timestamp) {
         if (!event) {
             return;
         }
-        console.log(`Cast: ${event.phase} (${event.element})`);
+        console.log(`Cast: ${event.phase} (${event.element}, ${event.hand})`);
         if (event.phase === 'release' || event.phase === 'cancel') {
             this.castResult = { phase: event.phase, until: timestamp + CAST_RESULT_MS };
         }

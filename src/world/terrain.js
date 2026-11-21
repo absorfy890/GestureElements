@@ -4,7 +4,7 @@
  * Autor:    Vladyslav Krykun
  * Dátum:    07.11.2026
  * Verzia:   0.2 (V1)
- * Popis:    Vytvorí zem, na ktorú dopadajú živly a na ktorú sa mieri (raycast).
+ * Popis:    Vytvorí zem, na ktorú dopadajú živly; výška a normála v ľubovoľnom bode (balistika).
  *           V1: terén z výškovej mapy (obrázok v public/); bez mapy rovná plocha.
  */
 import * as THREE from 'three';
@@ -114,6 +114,20 @@ function paintGround(geometry) {
         color.toArray(colors, i * 3);
     }
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+}
+
+/**
+ * Normála terénu v bode (x, z) z rozdielov výšok vľavo/vpravo a vpredu/vzadu.
+ * Vstup:  heightAt — funkcia (createHeightSampler), x, z — bod na teréne, out — THREE.Vector3 na výsledok.
+ * Výstup: out = jednotkový vektor kolmý na terén (na okraji terénu sa chýbajúci sused nahradí bodom samým).
+ */
+export function normalAt(heightAt, x, z, out = new THREE.Vector3()) {
+    const e = GROUND_SIZE / 256; // pol políčka mriežky
+    const h0 = heightAt(x, z) ?? 0;
+    const dx = (heightAt(x + e, z) ?? h0) - (heightAt(x - e, z) ?? h0); // nárast výšky v smere +x
+    const dz = (heightAt(x, z + e) ?? h0) - (heightAt(x, z - e) ?? h0); // nárast výšky v smere +z
+    // Plocha stúpa o dx na 2e v x → normála sa nakláňa proti stúpaniu: (−dx, 2e, −dz).
+    return out.set(-dx, 2 * e, -dz).normalize();
 }
 
 /**
