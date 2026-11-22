@@ -53,7 +53,11 @@ buniek; pravidlá zapálenie (teplo ≥ 0,3), horenie 6 s (teplo drží 0,75), d
 okraj spáleniny); palivo z terénu (`groundFuel`: piesok 0,3, tráva/les 1, skala 0); `GroundView`
 farbí spáleninu k uhliu; `FireFx.groundFlames` (plamene z horiacich buniek, strop 600 častíc/s).
 Šírenie ohňa na susedov = V2.
-Ďalej (9. týždeň, termín 22.11. → mešká): About pri štarte (+ zahriatie modelu ruky za ním).
+Krok 10 hotový (22.11.2026) = **V1/6 About**: `ui/about.js` (`AboutDialog`) — okno hneď pri štarte
+(autor, katedra/fakulta/univerzita, predmet, šk. rok, ovládanie, stav kamery a modelu); za ním beží
+scéna a sledovanie ruky (model sa zahreje), gestá sa zapnú až po „Pokračovať“.
+Úlohy 9. týždňa splnené (s oneskorením). Ďalej 10. týždeň: voda (gesto kruh → push, `fx/water`,
+vlhkosť, voda hasí oheň).
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -253,5 +257,9 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   zapojenie → dokumentácia). Pravidlá overené v Node (tráva 6 s, skala nehorí, 0,09 ms), v prehliadači
   58 horiacich buniek → po 12 s všetky dohoreli a ostali spálené. Prvá spálenina mala zubatý okraj
   (spálenina skáče 1 → 0) → pravidlo kúdolu (horúca bunka sčernie najviac na 0,5).
+  Commitnuté študentom.
+- 22.11.2026 — About pri štarte (`ui/about.js`); overené v paneli (okno nad scénou, po „Pokračovať“
+  zmizne, scéna beží). V paneli je kamera blokovaná → stav ostane „Načítavam…“; skutočnú kameru
+  a zapnutie gest po zatvorení overí študent. Učiteľ (meno) v About zatiaľ chýba — doplniť.
   Necommitnuté — commituje študent.
 

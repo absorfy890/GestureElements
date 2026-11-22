@@ -267,6 +267,14 @@ Plamene na horiacej zemi (`groundFlames`): z náhodných horiacich buniek (zozna
 stúpajú častice, 4 za sekundu na bunku, spolu najviac 600 za sekundu (strop — veľký požiar nesmie
 zhodiť FPS; neskôr podľa výkonového presetu).
 
+**Okno About pri štarte** (`ui/about.js`). Zobrazí sa hneď na začiatku `main.js`, ešte pred
+načítaním výškovej mapy, a prekryje scénu (zachytí myš → cez okno sa nekúzli). Za ním sa vytvorí
+scéna, spustí slučka a načíta kamera a model ruky; do okna sa vypíše stav (pripravené / kamera či
+model nedostupné → myš). Sledovanie ruky beží už za oknom: prvé detekcie na GPU sú pomalé (zostavujú
+sa shadery modelu), takže model sa „zahreje“, kým používateľ číta. Rozpoznávač gest sa vytvorí až po
+stlačení „Pokračovať“ (`await about.closed`), aby ruka nekúzlila počas čítania. Pokračovať sa dá aj
+pred dokončením načítania — myš funguje hneď, gestá sa zapnú po načítaní modelu.
+
 **Upozornenie „Málo svetla“** (`ui/lightHint.js`). Pri slabom svetle kamera predlžuje expozíciu,
 dáva menej snímok (namerané ~16 namiesto 30 snímok/s) a obraz pri pohybe rozmazáva. Frekvenciu
 kamery poznáme z frekvencie detekcie (beží na každom novom snímku). Ak je dlhšie ako 3 s pod 22,
@@ -277,7 +285,8 @@ dlhšie ako 33 ms (napr. CPU), frekvencia o svetle nič nehovorí a upozornenie 
 
 | Modul | Trieda / funkcia | Úloha |
 |---|---|---|
-| `src/main.js` | — | vstupný bod: načíta výškovú mapu, vytvorí `App`, spustí kameru a model (paralelne), pripojí ich |
+| `src/main.js` | — | vstupný bod: zobrazí About, načíta výškovú mapu, vytvorí `App`, spustí kameru a model (paralelne), pripojí ich; gestá zapne po zatvorení About |
+| `src/ui/about.js` | `AboutDialog` | úvodné okno (autor, katedra/fakulta/univerzita, predmet, šk. rok, ovládanie, stav načítania): `setStatus(text, ok)`, prísľub `closed` |
 | `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`, zem (`ground`) a výška zeme (`heightAt`); slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
 | `src/world/sceneSetup.js` | `createRenderer`, `createCamera`, `createScene` | základ scény Three.js |
 | `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`, `normalAt(heightAt, x, z)`, `groundFuel(geometria)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null`; normála terénu v bode |

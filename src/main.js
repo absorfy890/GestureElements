@@ -2,9 +2,10 @@
  * Program:  PG semestrálne zadanie — téma 9: AI a počítačová grafika
  * Modul:    main.js — vstupný bod aplikácie
  * Autor:    Vladyslav Krykun
- * Dátum:    31.10.2026
- * Verzia:   0.1 (V0)
- * Popis:    Vytvorí aplikáciu v kontajneri #app a spustí vykresľovaciu slučku.
+ * Dátum:    22.11.2026
+ * Verzia:   0.2 (V1)
+ * Popis:    Zobrazí okno About, za ním vytvorí aplikáciu v kontajneri #app, spustí vykresľovaciu
+ *           slučku a načíta kameru a model ruky; gestá zapne až po zatvorení okna.
  */
 import { App } from './app.js';
 import { startCamera } from './input/camera.js';
@@ -12,6 +13,10 @@ import { loadHandLandmarker, HandTracker } from './input/hand.js';
 import { HandPreview } from './ui/handPreview.js';
 import { GestureRecognizer } from './input/gestures.js';
 import { loadHeightmap, HEIGHTMAP_URL } from './world/terrain.js';
+import { AboutDialog } from './ui/about.js';
+
+// Okno About hneď pri štarte; všetko ďalej sa pripravuje za ním.
+const about = new AboutDialog(document.body);
 
 // Výšková mapa je malá a lokálna → počkáme na ňu pred vytvorením scény (terén ju potrebuje hneď).
 // Pri chybe heightmap = null → rovná zem, aplikácia beží ďalej.
@@ -41,6 +46,13 @@ if (hand.landmarker) {
     console.warn(`Model ruky nedostupný → myš. ${hand.error}`);
 }
 
+// Stav načítania do okna About.
+if (camera.video && hand.landmarker) {
+    about.setStatus(`Kamera a model ruky pripravené (${hand.delegate}).`, true);
+} else {
+    about.setStatus(`${camera.video ? 'Model ruky nedostupný' : 'Kamera nedostupná'} → ovládanie myšou.`, false);
+}
+
 // Náhľad kamery stačí mať pri kamere (aj bez modelu je vidno, či kamera beží).
 if (camera.video) {
     app.preview = new HandPreview(document.body, camera.video);
@@ -50,6 +62,12 @@ if (camera.video) {
 if (camera.video && hand.landmarker) {
     app.hand = new HandTracker(hand.landmarker, camera.video);
     app.handDelegate = hand.delegate;
+}
+
+// Sledovanie ruky beží už za oknom About (prvé detekcie sú pomalé — model sa „zahreje“),
+// ale gestá až po zatvorení okna, aby ruka nekúzlila, kým používateľ číta.
+await about.closed;
+if (app.hand) {
     // Rozpoznávač gest pre jednu ruku (V1); pri dvoch rukách by bol na každú ruku jeden.
     app.gestures = new GestureRecognizer('right', camera.video.videoWidth, camera.video.videoHeight);
 }

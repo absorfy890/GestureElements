@@ -30,6 +30,12 @@ TODO: `npm ci`, `npm run dev`, povolenie prístupu ku kamere v prehliadači.
 
 ## 4. Použitie programu
 
+### 4.0 Úvodné okno
+Po spustení sa zobrazí okno s údajmi o programe (autor, katedra, predmet, školský rok), stručným
+ovládaním a stavom načítania kamery a modelu ruky. Prehliadač si pritom vypýta povolenie
+kamery. Okno zatvoríme tlačidlom **Pokračovať** (alebo klávesom Enter). Kým je okno otvorené,
+program sa v pozadí pripravuje; gestá rukou začnú fungovať až po jeho zatvorení.
+
 ### 4.1 Náhľad kamery a stav ruky
 Vpravo dole je náhľad kamery (zrkadlový obraz). Keď je ruka v zábere, kreslí sa na ňu
 21 bodov; špička ukazováka je červená. Farba rámika ukazuje stav sledovania ruky:
