@@ -48,8 +48,12 @@ Krok 8 hotový (22.11.2026) = **V1/4 efekt ohňa**: `fx/particles.js` (`Particle
 aditívne miešanie): oheň v ruke počas zberu/mierenia (rastie s power), ohnivá guľa letí po dráhe
 (`trajectoryAt`, `App.projectiles`), pri dopade záblesk (častice + `PointLight`) a až vtedy
 `groundState.hit`. Študent upravil `HIT.fire.radius` 2,5 → 1,5 a vyhasínanie 20 → 10 s.
-Ďalej (9. týždeň, termín 22.11. → mešká): terén horí (horenie, dohorenie, spálené miesto),
-About pri štarte.
+Krok 9 hotový (22.11.2026) = **V1/5 terén horí**: `GroundState` + `fuel`, `burnt`, zoznam horiacich
+buniek; pravidlá zapálenie (teplo ≥ 0,3), horenie 6 s (teplo drží 0,75), dohorenie, kúdol (plynulý
+okraj spáleniny); palivo z terénu (`groundFuel`: piesok 0,3, tráva/les 1, skala 0); `GroundView`
+farbí spáleninu k uhliu; `FireFx.groundFlames` (plamene z horiacich buniek, strop 600 častíc/s).
+Šírenie ohňa na susedov = V2.
+Ďalej (9. týždeň, termín 22.11. → mešká): About pri štarte (+ zahriatie modelu ruky za ním).
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -244,5 +248,10 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   v ruke bola biela preexponovaná škvrna (aditívne sčítanie) → jas častice 0,55, mäkší okraj, žlté
   jadro, silnejší pohyb nahor. Overené snímkami s ručným časom (let, dopad, 3 guľe naraz; 6,6 ms
   na snímok). Chyby `setPointerCapture` v konzole = artefakt testu s umelými udalosťami myši.
+  Commitnuté študentom.
+- 22.11.2026 — terén horí v 6 krokoch (pravidlá → palivo z terénu → farba spáleniny → plamene →
+  zapojenie → dokumentácia). Pravidlá overené v Node (tráva 6 s, skala nehorí, 0,09 ms), v prehliadači
+  58 horiacich buniek → po 12 s všetky dohoreli a ostali spálené. Prvá spálenina mala zubatý okraj
+  (spálenina skáče 1 → 0) → pravidlo kúdolu (horúca bunka sčernie najviac na 0,5).
   Necommitnuté — commituje študent.
 

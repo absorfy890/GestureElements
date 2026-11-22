@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { createRenderer, createCamera, createScene } from './world/sceneSetup.js';
-import { createGround, createHeightSampler, normalAt, GROUND_SIZE, FLAT_SEGMENTS } from './world/terrain.js';
+import { createGround, createHeightSampler, normalAt, groundFuel, GROUND_SIZE, FLAT_SEGMENTS } from './world/terrain.js';
 import { GroundState } from './world/groundState.js';
 import { GroundView } from './world/groundView.js';
 import { AimCursor, TrajectoryLine, launchFromAim, computeTrajectory, trajectoryAt, handAnchor } from './cast/aim.js';
@@ -39,7 +39,7 @@ export class App {
         this.heightAt = createHeightSampler(heightmap); // (x, z) → výška zeme (balistika, bunky)
         // Stav zeme: bunka = vrchol terénu (rovná zem má rovnako FLAT_SEGMENTS + 1 vrcholov).
         const cells = heightmap ?? { width: FLAT_SEGMENTS + 1, height: FLAT_SEGMENTS + 1 };
-        this.groundState = new GroundState(cells.width, cells.height, GROUND_SIZE);
+        this.groundState = new GroundState(cells.width, cells.height, GROUND_SIZE, groundFuel(this.ground.geometry));
         this.groundView = new GroundView(this.ground, this.groundState);
         this.aimCursor = new AimCursor(this.scene);       // kurzor na zemi = miesto dopadu
         this.trajectory = new TrajectoryLine(this.scene); // náhľad dráhy kúzla pri mierení
@@ -113,7 +113,7 @@ export class App {
     }
 
     /**
-     * Efekty: oheň v ruke počas castu ohňa, letiace kúzla, pohyb častíc.
+     * Efekty: oheň v ruke počas castu ohňa, letiace kúzla, plamene horiacej zeme, pohyb častíc.
      * Vstup: dt — krok času (s). Výstup: žiadny.
      */
     updateFx(dt) {
@@ -122,6 +122,7 @@ export class App {
             this.fire.handFlame(handAnchor(this.camera), intent.power, dt);
         }
         this.updateProjectiles(dt);
+        this.fire.groundFlames(this.groundState, this.heightAt, dt);
         this.fire.update(dt, this.camera, this.renderer.domElement.height);
     }
 

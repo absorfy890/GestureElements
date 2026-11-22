@@ -6,7 +6,8 @@
  * Verzia:   0.1 (V1)
  * Popis:    Oheň z častíc (ParticleSystem) s vlastným shaderom: mäkké svietiace body, farba podľa
  *           veku (biela → žltá → oranžová → červená → zhasne), aditívne miešanie.
- *           Oheň v ruke počas zberu a mierenia, ohnivá guľa za letu, záblesk pri dopade.
+ *           Oheň v ruke počas zberu a mierenia, ohnivá guľa za letu, záblesk pri dopade,
+ *           plamene na horiacej zemi.
  */
 import * as THREE from 'three';
 import { ParticleSystem } from './particles.js';
@@ -29,6 +30,13 @@ const BURST_SPEED = { min: 2, max: 6 };     // jednotky/s
 const BURST_SIZE = 0.6;
 const FLASH_INTENSITY = 120;                // PointLight (fyzikálne jednotky three.js — kandela)
 const FLASH_MS = 400;                       // ako dlho svetlo zhasína
+
+// Plamene na horiacej zemi: počet častíc za sekundu podľa počtu horiacich buniek, so stropom
+// (veľký požiar nesmie zhodiť FPS — strop neskôr podľa výkonového presetu).
+const GROUND_RATE_PER_CELL = 4;   // častíc/s na horiacu bunku
+const GROUND_RATE_MAX = 600;      // častíc/s spolu
+const GROUND_SIZE = { min: 0.3, max: 0.6 };
+const GROUND_JITTER = 0.15;       // rozptyl v rámci bunky (bunka ≈ 0,31 jednotky)
 
 const vertexShader = /* glsl */ `
     attribute float aSize;   // veľkosť častice (jednotky scény)
@@ -96,6 +104,7 @@ export class FireFx {
         this.particles = new ParticleSystem(scene, createFireMaterial(), CAPACITY, { buoyancy: 1.5, drag: 2 });
         this.handDebt = 0; // „dlh“ častíc z minulých snímok (rate · dt nie je celé číslo)
         this.ballDebt = 0;
+        this.groundDebt = 0;
 
         // Jedno svetlo záblesku na celý efekt (nové svetlo = nový shader, drahé) — pri dopade sa presunie.
         this.flash = new THREE.PointLight(0xff7a2a, 0, 14, 2);
@@ -150,6 +159,31 @@ export class FireFx {
             p.set(rand(-1, 1), rand(-1, 1), rand(-1, 1)).multiplyScalar(HAND_RADIUS).add(anchor);
             const v = { x: rand(-0.08, 0.08), y: rand(0.2, 0.45), z: rand(-0.08, 0.08) }; // plameň stúpa
             this.particles.emit(p, v, rand(0.35, 0.7), size * rand(0.7, 1.3));
+        }
+    }
+
+    /**
+     * Plamene na horiacej zemi: častice z náhodných horiacich buniek stavu zeme.
+     * Vstup: state — GroundState (burning, burningCount, cellCenter), heightAt — výška terénu (x, z),
+     *        dt — krok času (s). Výstup: žiadny.
+     */
+    groundFlames(state, heightAt, dt) {
+        const count = state.burningCount;
+        if (count === 0) {
+            this.groundDebt = 0;
+            return;
+        }
+        this.groundDebt += Math.min(GROUND_RATE_MAX, count * GROUND_RATE_PER_CELL) * dt;
+        const cell = { x: 0, z: 0 };
+        const p = new THREE.Vector3();
+        while (this.groundDebt >= 1) {
+            this.groundDebt -= 1;
+            state.cellCenter(state.burning[Math.floor(Math.random() * count)], cell);
+            p.x = cell.x + rand(-GROUND_JITTER, GROUND_JITTER);
+            p.z = cell.z + rand(-GROUND_JITTER, GROUND_JITTER);
+            p.y = (heightAt(p.x, p.z) ?? 0) + 0.05;
+            const v = { x: rand(-0.15, 0.15), y: rand(0.6, 1.4), z: rand(-0.15, 0.15) };
+            this.particles.emit(p, v, rand(0.5, 1.0), rand(GROUND_SIZE.min, GROUND_SIZE.max));
         }
     }
 

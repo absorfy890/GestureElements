@@ -103,6 +103,26 @@ function groundColor(height, normalY, out) {
 }
 
 /**
+ * Palivo zeme (čo môže zhorieť) podľa tých istých pásiem ako farba: piesok málo, tráva a les
+ * plne, skala (vysoko alebo strmý svah) vôbec.
+ * Vstup: geometry — geometria zeme (createGround). Výstup: Float32Array 0..1, jedna hodnota na vrchol.
+ */
+export function groundFuel(geometry) {
+    const { smoothstep, lerp } = THREE.MathUtils;
+    const pos = geometry.attributes.position;
+    const normal = geometry.attributes.normal;
+    const fuel = new Float32Array(pos.count);
+    for (let i = 0; i < pos.count; i++) {
+        const h = pos.getY(i) / MAX_HEIGHT;
+        const vegetation = lerp(0.3, 1, smoothstep(h, 0.04, 0.12));      // piesok → tráva
+        const notRock = (1 - smoothstep(h, 0.75, 0.95))                    // holé vrcholy
+            * (1 - smoothstep(1 - normal.getY(i), 0.12, 0.3));             // strmé svahy
+        fuel[i] = vegetation * notRock;
+    }
+    return fuel;
+}
+
+/**
  * Zafarbí každý vrchol podľa výšky a sklonu (vytvorí atribút 'color').
  * Vstup:  geometry — geometria zeme s pozíciami a normálami (y = výška). Výstup: žiadny.
  */

@@ -151,6 +151,23 @@ vyhasínanie obrátil na zahrievanie celého terénu — odhalil to test s ručn
 Modul nezávisí od Three.js. Overené v Node: stred 1,0 / pol polomeru 0,5 / okraj 0; symetria
 v osiach; pri polomere 2,5 193 buniek (πr² ≈ 201); okraj mapy a bod mimo mapy bez chyby; `update` 0,08 ms.
 
+**Horenie** (pravidlá v `GroundState.update`). Ďalšie dve veličiny: `fuel` (palivo — čo môže
+zhorieť) a `burnt` (spálenina, ostáva natrvalo). Palivo sa pri štarte vypočíta z terénu
+(`groundFuel` v `terrain.js`, tie isté pásma ako farba): piesok 0,3, tráva a les 1, holé vrcholy
+a strmé svahy (skala) 0. Pravidlá pre každú bunku:
+1. **zapálenie** — teplo ≥ 0,3 a palivo > 0 → bunka horí;
+2. **horenie** — palivo ubúda (plné zhorí za 6 s) a o toľko rastie spálenina; kým horí, teplo
+   neklesne pod 0,75 (oheň sa sám udržuje);
+3. **dohorenie** — bez paliva sa teplo už neudržuje, bunka vychladne a ostane spálená;
+4. **kúdol** — aj nehoriaca horúca bunka (okraj požiaru, skala) sčernie, najviac na 0,5 podľa tepla
+   (`smoothstep` medzi 0,1 a 0,3). Bez neho bol okraj spáleniny zubatý (skok 1 → 0 medzi
+   susednými bunkami).
+Šírenie ohňa na susedné bunky je až vo V2. Počas `update` sa zbiera zoznam horiacich buniek
+(`burning`, `burningCount`) pre plamene; `cellCenter(i)` vráti stred bunky vo svete.
+Overené v Node (polovica mriežky tráva, polovica skala, rovnaký dopad): tráva horí 6 s (teplo drží
+0,75, palivo 1 → 0, spálenina → 1), potom za ~7 s vychladne; skala nehorí, len sčernie na 0,5;
+teplo 0,25 nezapáli nič; `update` 0,09 ms.
+
 **Výstrel → let → dopad.** `App.updateAim` si v každom snímku mierenia zapamätá hod (`lastShot`:
 štart, rýchlosť, gravitácia, miesto a čas dopadu — `computeTrajectory` vracia aj čas letu `time`
 z bisekcie); udalosť `release` príde až v ďalšom snímku (keď sa už nemieri), preto sa použije
@@ -162,9 +179,10 @@ pustenie počas zberu) nič nevypustí. Overené castom myšou s ručným časom
 letu (0,6 s) je zem studená, po dopade teplo 0,99; tri výstrely za sebou → 1, 2, 2 kúzla vo vzduchu,
 po 2 s 0; zrušenie a skoré pustenie → 0; po 10 s od dopadu 0,45 (pri vyhasínaní za 20 s).
 
-**Zobrazenie stavu** (`world/groundView.js`). Dve veličiny dvoma spôsobmi:
-- vlhkosť → **farba vrcholov**: mokrá zem je tmavšia (základná farba × (1 − 0,55 · vlhkosť));
-  základné farby (výška, sklon) sa pri vytvorení skopírujú a stav sa počíta vždy od nich;
+**Zobrazenie stavu** (`world/groundView.js`):
+- spálenina a vlhkosť → **farba vrcholov**: najprv prechod k uhliu (úplne spálená bunka 90 % uhoľ),
+  potom mokrá zem tmavšia (× (1 − 0,55 · vlhkosť)); základné farby (výška, sklon) sa pri vytvorení
+  skopírujú a stav sa počíta vždy od nich;
 - teplo → **žiarenie** (`emissiveMap`): farba vrcholov ide do difúzneho svetla, takže rozpálené
   miesto by v tieni bolo tmavé; žiarenie od osvetlenia nezávisí. Teplo sa zapíše do textúry
   `DataTexture` 129 × 129 (pixel = bunka; tmavočervená → oranžová → žltkastá), ktorá sa na terén
@@ -245,6 +263,9 @@ Záblesk (`burst`): 90 častíc do hornej pologule rýchlosťou 2–6 a jediné 
 dopadu. Svetlo je v scéne stále (s intenzitou 0): pridanie svetla počas behu by vynútilo nové
 zostavenie shaderov. Počet častíc za sekundu nezávisí od FPS (zvyšok `rate · dt` sa prenáša do
 ďalšieho snímku). Snímok s ohňom v ruke ~1,6 ms, s tromi guľami a zábleskami ~6,6 ms (panel Claude).
+Plamene na horiacej zemi (`groundFlames`): z náhodných horiacich buniek (zoznam zo stavu zeme)
+stúpajú častice, 4 za sekundu na bunku, spolu najviac 600 za sekundu (strop — veľký požiar nesmie
+zhodiť FPS; neskôr podľa výkonového presetu).
 
 **Upozornenie „Málo svetla“** (`ui/lightHint.js`). Pri slabom svetle kamera predlžuje expozíciu,
 dáva menej snímok (namerané ~16 namiesto 30 snímok/s) a obraz pri pohybe rozmazáva. Frekvenciu
@@ -259,10 +280,10 @@ dlhšie ako 33 ms (napr. CPU), frekvencia o svetle nič nehovorí a upozornenie 
 | `src/main.js` | — | vstupný bod: načíta výškovú mapu, vytvorí `App`, spustí kameru a model (paralelne), pripojí ich |
 | `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`, zem (`ground`) a výška zeme (`heightAt`); slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
 | `src/world/sceneSetup.js` | `createRenderer`, `createCamera`, `createScene` | základ scény Three.js |
-| `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`, `normalAt(heightAt, x, z)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null`; normála terénu v bode |
+| `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`, `normalAt(heightAt, x, z)`, `groundFuel(geometria)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null`; normála terénu v bode |
 | `src/fx/particles.js` | `ParticleSystem` | sústava častíc (jeden `THREE.Points`): `emit(poloha, rýchlosť, život, veľkosť)`, `update(dt, kamera, výška plátna)` |
-| `src/fx/fire.js` | `FireFx` | oheň z častíc (vlastný shader): `handFlame(kotva, sila, dt)`, `fireball(poloha, sila, dt)`, `burst(bod, sila)` (+ svetlo záblesku), `update` |
-| `src/world/groundState.js` | `GroundState` | stav zeme (bunkový automat): `heat`, `moisture`; `toGrid(x, z)`, `addAround(pole, x, z, polomer, prírastok)`, `hit(živel, x, z, sila)`, `update(dt)` |
+| `src/fx/fire.js` | `FireFx` | oheň z častíc (vlastný shader): `handFlame(kotva, sila, dt)`, `fireball(poloha, sila, dt)`, `burst(bod, sila)` (+ svetlo záblesku), `groundFlames(stav, heightAt, dt)`, `update` |
+| `src/world/groundState.js` | `GroundState` | stav zeme (bunkový automat): `heat`, `moisture`, `fuel`, `burnt`, `burning`/`burningCount`; `toGrid(x, z)`, `cellCenter(i)`, `addAround(pole, x, z, polomer, prírastok)`, `hit(živel, x, z, sila)`, `update(dt)` |
 | `src/world/groundView.js` | `GroundView` | zobrazenie stavu na teréne: vlhkosť → farba vrcholov, teplo → `emissiveMap`; `update()` |
 | `scripts/make-heightmap.js` | — | pomocný nástroj (nie súčasť aplikácie): vygeneruje `public/terrain/heightmap.png` |
 | `src/cast/aim.js` | `aimToNdc(aim)`, `handAnchor(kamera)`, `launchFromAim(aim, kamera, živel)`, `trajectoryAt(štart, rýchlosť, g, t)`, `computeTrajectory(štart, rýchlosť, g, heightAt)` | bod mierenia → NDC; kotva ruky vo svete; parametre hodu `{ start, velocity, gravity }`; poloha na dráhe v čase t; parabolická dráha → `{ points, impact, time }` (`impact`, `time` = `null` bez dopadu) |
@@ -288,6 +309,7 @@ Poradie volaní v jednom snímku: `App.renderFrame` → `updateHand` (`HandTrack
 `OrbitControls.update` → `updateAim` (`castIntent` → `launchFromAim` → `computeTrajectory` →
 `TrajectoryLine.show`, `AimCursor.moveTo`) → `updateFx(dt)` (`FireFx.handFlame` →
 `updateProjectiles`: `trajectoryAt`, `FireFx.fireball` / pri dopade `burst` + `GroundState.hit` →
+`FireFx.groundFlames` →
 `FireFx.update`) → `GroundState.update(dt)` → `GroundView.update` → `renderer.render` → `updatePerf`.
 
 ## 4. Preklad programu

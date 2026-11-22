@@ -4,13 +4,16 @@
  * Autor:    Vladyslav Krykun
  * Dátum:    21.11.2026
  * Verzia:   0.1 (V1)
- * Popis:    Prenáša GroundState na terén: vlhkosť stmaví farbu vrcholov (mokrá zem je tmavšia),
- *           teplo svieti cez emissiveMap (žiari aj v tieni). Bunka i = vrchol i terénu.
+ * Popis:    Prenáša GroundState na terén: spálenina zafarbí vrcholy k uhliu, vlhkosť ich stmaví
+ *           (mokrá zem je tmavšia), teplo svieti cez emissiveMap (žiari aj v tieni).
+ *           Bunka i = vrchol i terénu.
  */
 import * as THREE from 'three';
 
 const WET_DARKEN = 0.55;     // o koľko stmavne úplne mokrá zem (0..1); 0,45 bolo na tmavom lese málo vidno
 const HEAT_INTENSITY = 1.5;  // sila žiarenia rozpálenej zeme
+const CHAR = [0.06, 0.05, 0.045]; // farba spáleniny (uhoľ, lineárne RGB ako atribút color)
+const CHAR_MAX = 0.9;             // úplne spálená bunka: 90 % uhoľ, 10 % pôvodnej farby
 
 /**
  * Farba žiarenia podľa tepla: tmavočervená → oranžová → žltkastá; zapíše RGBA (0..255) do poľa.
@@ -54,7 +57,7 @@ export class GroundView {
 
     /** Prenesie aktuálny stav na terén (volá sa v každom snímku). Vstup/výstup: žiadny. */
     update() {
-        const { width, height, heat, moisture } = this.state;
+        const { width, height, heat, moisture, burnt } = this.state;
         const colors = this.colors.array;
         const base = this.baseColors;
         const px = this.heatPixels;
@@ -65,10 +68,12 @@ export class GroundView {
             for (let col = 0; col < width; col++) {
                 const i = row * width + col;
 
+                // Spálenina: prechod k uhliu; potom vlhkosť stmaví výsledok.
+                const c = CHAR_MAX * burnt[i];
                 const k = 1 - WET_DARKEN * moisture[i];
-                colors[i * 3] = base[i * 3] * k;
-                colors[i * 3 + 1] = base[i * 3 + 1] * k;
-                colors[i * 3 + 2] = base[i * 3 + 2] * k;
+                for (let ch = 0; ch < 3; ch++) {
+                    colors[i * 3 + ch] = (base[i * 3 + ch] + (CHAR[ch] - base[i * 3 + ch]) * c) * k;
+                }
 
                 writeHeatColor(heat[i], px, (texRow * width + col) * 4);
             }
