@@ -40,6 +40,14 @@ export function aimToNdc(aim) {
 }
 
 /**
+ * Kotva ruky vo svete (odkiaľ kúzlo letí, kde horí oheň v ruke).
+ * Vstup: camera — kamera scény. Výstup: THREE.Vector3.
+ */
+export function handAnchor(camera) {
+    return camera.localToWorld(HAND_ANCHOR.clone()); // súradnice kamery → svet
+}
+
+/**
  * Parametre hodu z bodu mierenia: smer = lúč z kamery cez aim (uhol obmedzený), štart = kotva ruky
  * (HAND_ANCHOR), rýchlosť a gravitácia podľa živlu.
  * Vstup:  aim — { x, y } v rozsahu 0..1 (y dole), camera — THREE.PerspectiveCamera,
@@ -52,7 +60,7 @@ export function launchFromAim(aim, camera, element = 'fire') {
     // Smer lúča: bod obrazovky (NDC, z = 0.5 = niekde v hĺbke) → svet, mínus poloha kamery.
     const ndc = aimToNdc(aim);
     const dir = new THREE.Vector3(ndc.x, ndc.y, 0.5).unproject(camera).sub(camera.position).normalize();
-    const start = camera.localToWorld(HAND_ANCHOR.clone()); // súradnice kamery → svet
+    const start = handAnchor(camera);
 
     // Obmedziť uhol nad/pod vodorovnou rovinou; strana hodu (vodorovný smer) ostáva.
     const elevation = THREE.MathUtils.clamp(Math.asin(dir.y), MIN_ELEVATION, MAX_ELEVATION);
@@ -64,21 +72,31 @@ export function launchFromAim(aim, camera, element = 'fire') {
 }
 
 /**
- * Balistická dráha kúzla: p(t) = start + velocity·t + ½·(0, −gravity, 0)·t²; dopad = prvé miesto,
- * kde dráha klesne pod terén (kopec v ceste ju zastaví).
- * Vstup:  start — THREE.Vector3 začiatok letu, velocity — THREE.Vector3 počiatočná rýchlosť (jednotky/s),
- *         gravity — zrýchlenie nadol (jednotky/s², kladné číslo),
- *         heightAt — funkcia (x, z) → výška terénu alebo null mimo terénu (createHeightSampler).
- * Výstup: { points, impact } — points = pole THREE.Vector3 pozdĺž dráhy (posledný = dopad, ak je),
- *         impact = THREE.Vector3 miesto dopadu; null, ak kúzlo vyletí z terénu alebo letí dlhšie ako
- *         TRAJECTORY_MAX_TIME.
+ * Poloha kúzla na dráhe v čase t: p(t) = start + velocity·t + ½·(0, −gravity, 0)·t².
+ * Vstup:  start, velocity — THREE.Vector3, gravity — číslo (jednotky/s²), t — čas od hodu (s),
+ *         out — THREE.Vector3 na výsledok (predvolene nový).
+ * Výstup: out.
  */
-export function computeTrajectory(start, velocity, gravity, heightAt) {
-    const at = (t) => new THREE.Vector3(
+export function trajectoryAt(start, velocity, gravity, t, out = new THREE.Vector3()) {
+    return out.set(
         start.x + velocity.x * t,
         start.y + velocity.y * t - 0.5 * gravity * t * t,
         start.z + velocity.z * t,
     );
+}
+
+/**
+ * Balistická dráha kúzla (trajectoryAt); dopad = prvé miesto, kde dráha klesne pod terén
+ * (kopec v ceste ju zastaví).
+ * Vstup:  start — THREE.Vector3 začiatok letu, velocity — THREE.Vector3 počiatočná rýchlosť (jednotky/s),
+ *         gravity — zrýchlenie nadol (jednotky/s², kladné číslo),
+ *         heightAt — funkcia (x, z) → výška terénu alebo null mimo terénu (createHeightSampler).
+ * Výstup: { points, impact, time } — points = pole THREE.Vector3 pozdĺž dráhy (posledný = dopad, ak je),
+ *         impact = THREE.Vector3 miesto dopadu, time = čas letu po dopad (s); impact a time sú null,
+ *         ak kúzlo vyletí z terénu alebo letí dlhšie ako TRAJECTORY_MAX_TIME.
+ */
+export function computeTrajectory(start, velocity, gravity, heightAt) {
+    const at = (t) => trajectoryAt(start, velocity, gravity, t);
     // Výška nad terénom; null mimo terénu.
     const clearance = (p) => {
         const ground = heightAt(p.x, p.z);
@@ -90,7 +108,7 @@ export function computeTrajectory(start, velocity, gravity, heightAt) {
         const p = at(t);
         const c = clearance(p);
         if (c === null) {
-            return { points, impact: null }; // vyletelo z terénu
+            return { points, impact: null, time: null }; // vyletelo z terénu
         }
         if (c <= 0) {
             // Dopad je medzi t − krok (nad zemou) a t (pod zemou) → spresniť delením na polovicu.
@@ -108,11 +126,11 @@ export function computeTrajectory(start, velocity, gravity, heightAt) {
             const impact = at(below);
             impact.y = heightAt(impact.x, impact.z); // presne na povrch
             points.push(impact);
-            return { points, impact };
+            return { points, impact, time: below };
         }
         points.push(p);
     }
-    return { points, impact: null }; // letí príliš dlho
+    return { points, impact: null, time: null }; // letí príliš dlho
 }
 
 /** Krúžok na zemi, ktorý ukazuje miesto dopadu kúzla. */

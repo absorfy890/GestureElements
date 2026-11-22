@@ -62,7 +62,7 @@ Kúzlo sa kúzli pravou rukou v troch krokoch — inšpirované ohýbaním ohňa
    jeho dráhu (oblúk) z ruky vpravo dole a oranžový krúžok miesto dopadu na zemi (zobrazia sa
    už počas zberu). Kopec v ceste kúzlo zastaví.
 3. **Výstrel:** prudko udri päsťou smerom ku kamere a pri tom otvor dlaň. Zobrazí sa `🔥 VÝSTREL!`.
-   Zem v mieste dopadu sa rozžiari (oranžová škvrna) a za približne 20 s vychladne.
+   Zem v mieste dopadu sa rozžiari (oranžová škvrna) a za približne 10 s vychladne.
 
 Kúzlo **zrušíš** (zobrazí sa `✖ zrušené`) ktorýmkoľvek z týchto spôsobov:
 - rýchly švih rukou do strany („striasť“ kúzlo);

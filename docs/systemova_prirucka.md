@@ -142,21 +142,25 @@ zodpovedali vrcholom.
 vrchol terénu** (129 × 129). Každá veličina je samostatné pole `Float32Array` s hodnotami 0..1 —
 teraz `heat` (teplo) a `moisture` (vlhkosť); nový živel = nová veličina, vzájomné pôsobenie živlov
 = pravidlá v `update(dt)`. Dopad kúzla `hit(živel, x, z, sila)` podľa tabuľky `HIT` (oheň → teplo,
-polomer 2,5) pridá veličinu v kruhu: bod sveta → mriežka rovnako ako pri `heightAt`, prechádza sa
+polomer 1,5 — upravil študent z 2,5) pridá veličinu v kruhu: bod sveta → mriežka rovnako ako pri `heightAt`, prechádza sa
 len štvorec okolo kruhu (orezaný na okraje) a prírastok klesá od stredu k okraju plynulo
 (`1 − smoothstep(d, 0, r)`) → okrúhla škvrna bez ostrých hrán; hodnoty sú zhora obmedzené na 1.
-Pravidlá zatiaľ: teplo vyhasína (z 1 na 0 za 20 s), vlhkosť vysychá (za 50 s); krok simulácie je
+Pravidlá zatiaľ: teplo vyhasína (z 1 na 0 za 10 s — študent skrátil z 20 s), vlhkosť vysychá (za 50 s); krok simulácie je
 obmedzený na 0 … 0,1 s (po skrytí karty by stav inak „preskočil“ dlhý čas; záporný krok by
 vyhasínanie obrátil na zahrievanie celého terénu — odhalil to test s ručným časom).
+Modul nezávisí od Three.js. Overené v Node: stred 1,0 / pol polomeru 0,5 / okraj 0; symetria
+v osiach; pri polomere 2,5 193 buniek (πr² ≈ 201); okraj mapy a bod mimo mapy bez chyby; `update` 0,08 ms.
 
-**Výstrel → dopad.** `App.updateAim` si v každom snímku mierenia zapamätá miesto dopadu
-(`lastImpact`); udalosť `release` príde až v ďalšom snímku (keď sa už nemieri), preto sa použije
-zapamätané miesto: `groundState.hit(živel, x, z, power)`. Zatiaľ okamžite — let kúzla po dráhe
-príde s efektom ohňa. Zrušený cast (aj pustenie počas zberu) zem nemení. Overené castom myšou
-s ručným časom: výstrel → teplo v mieste dopadu 0,99; zrušenie pravým tlačidlom a skoré pustenie
-→ 0; po 10 s 0,45. Modul nezávisí od Three.js.
-Overené v Node: stred 1,0 / pol polomeru 0,5 / okraj 0; symetria v osiach; 193 buniek (πr² ≈ 201);
-okraj mapy a bod mimo mapy bez chyby; `update` 0,08 ms.
+**Výstrel → let → dopad.** `App.updateAim` si v každom snímku mierenia zapamätá hod (`lastShot`:
+štart, rýchlosť, gravitácia, miesto a čas dopadu — `computeTrajectory` vracia aj čas letu `time`
+z bisekcie); udalosť `release` príde až v ďalšom snímku (keď sa už nemieri), preto sa použije
+zapamätaný hod. Výstrel pridá **letiace kúzlo** do zoznamu `App.projectiles` (môže letieť viac
+naraz). `updateProjectiles(dt)` v každom snímku posunie čas letu a polohu vypočíta tým istým
+vzorcom ako náhľad (`trajectoryAt`) → guľa letí presne po zobrazenej dráhe. Po uplynutí času letu:
+záblesk (`FireFx.burst`) a dopad na zem `groundState.hit(živel, x, z, power)`. Zrušený cast (aj
+pustenie počas zberu) nič nevypustí. Overené castom myšou s ručným časom: pri výstrele aj v polovici
+letu (0,6 s) je zem studená, po dopade teplo 0,99; tri výstrely za sebou → 1, 2, 2 kúzla vo vzduchu,
+po 2 s 0; zrušenie a skoré pustenie → 0; po 10 s od dopadu 0,45 (pri vyhasínaní za 20 s).
 
 **Zobrazenie stavu** (`world/groundView.js`). Dve veličiny dvoma spôsobmi:
 - vlhkosť → **farba vrcholov**: mokrá zem je tmavšia (základná farba × (1 − 0,55 · vlhkosť));
@@ -217,6 +221,31 @@ v mieste dopadu, natočený podľa normály terénu (`normalAt` — z rozdielov 
 x a z, `quaternion.setFromUnitVectors(hore, normála)`) a odsadený pozdĺž normály o `CURSOR_LIFT`
 — inak by sa časť krúžku zanorila do svahu. Bez dopadu sa kurzor skryje.
 
+**Častice** (`fx/particles.js`, `ParticleSystem`) — spoločný základ efektov ohňa (a neskôr vody).
+Všetky častice jednej sústavy sú jeden `THREE.Points` (jedno vykreslenie). Pevná kapacita, buffre
+vytvorené raz; `emit` zapíše časticu do ďalšieho slotu dokola (pri plnej sústave sa prepíše
+najstaršia). Pohyb na CPU v `update(dt)`: vek → `aLife` 0..1 (1 = mŕtva), poloha += rýchlosť · dt,
+„vztlak“ (buoyancy) ťahá nahor (horúci vzduch), odpor (drag) brzdí. Vzhľad určuje materiál efektu.
+
+**Oheň** (`fx/fire.js`, `FireFx`) — vlastný shader (`ShaderMaterial`, GLSL):
+- vrcholový: veľkosť bodu v pixeloch = veľkosť · mierka / vzdialenosť (mierka = výška plátna /
+  (2 · tg(fov/2))) → vzdialené častice sú menšie; počas života mierne narastie; mŕtva = 0 px;
+- fragmentový: mäkký kruh z `gl_PointCoord` (`1 − smoothstep`, umocnené), farba podľa veku
+  žltá → oranžová → tmavočervená, nábeh a zhasnutie priehľadnosťou;
+- aditívne miešanie (viac častíc = jasnejšie), `depthWrite` vypnutý (častice sa navzájom
+  nezakrývajú štvorcami, ale terén ich zakryje). Jas jednej častice 0,55 — pri plnom jase sa stred
+  plameňa zlial do bielej škvrny.
+
+Oheň v ruke: počas zberu a mierenia ohňa vznikajú častice okolo kotvy ruky (`handAnchor`, tá istá
+ako štart dráhy), 30 → 160 za sekundu a väčšie podľa sily (`intent.power`), stúpajú nahor.
+Ohnivá guľa (`fireball`): v mieste letiacej gule vzniká 240 krátko žijúcich (0,15–0,35 s) častíc
+za sekundu; nové tvoria jasné jadro, staršie zaostávajú a zhasínajú → chvost vznikne sám pohybom.
+Záblesk (`burst`): 90 častíc do hornej pologule rýchlosťou 2–6 a jediné bodové svetlo
+(`PointLight`, presunie sa na miesto dopadu, zhasne kvadraticky za 0,4 s) — osvetlí svah okolo
+dopadu. Svetlo je v scéne stále (s intenzitou 0): pridanie svetla počas behu by vynútilo nové
+zostavenie shaderov. Počet častíc za sekundu nezávisí od FPS (zvyšok `rate · dt` sa prenáša do
+ďalšieho snímku). Snímok s ohňom v ruke ~1,6 ms, s tromi guľami a zábleskami ~6,6 ms (panel Claude).
+
 **Upozornenie „Málo svetla“** (`ui/lightHint.js`). Pri slabom svetle kamera predlžuje expozíciu,
 dáva menej snímok (namerané ~16 namiesto 30 snímok/s) a obraz pri pohybe rozmazáva. Frekvenciu
 kamery poznáme z frekvencie detekcie (beží na každom novom snímku). Ak je dlhšie ako 3 s pod 22,
@@ -231,10 +260,12 @@ dlhšie ako 33 ms (napr. CPU), frekvencia o svetle nič nehovorí a upozornenie 
 | `src/app.js` | `App` | renderer, scéna, kamera, `OrbitControls`, zem (`ground`) a výška zeme (`heightAt`); slučka `renderFrame`, `updateHand`, `updateAim`, `updatePerf` |
 | `src/world/sceneSetup.js` | `createRenderer`, `createCamera`, `createScene` | základ scény Three.js |
 | `src/world/terrain.js` | `loadHeightmap(url)`, `createGround(heightmap)`, `createHeightSampler(heightmap)`, `normalAt(heightAt, x, z)`; `GROUND_SIZE`, `MAX_HEIGHT` | výšková mapa z obrázka → `{ heightmap, error }`; terén 40 × 40 s vrcholovými farbami a tieňmi (bez mapy rovný); funkcia (x, z) → výška alebo `null`; normála terénu v bode |
+| `src/fx/particles.js` | `ParticleSystem` | sústava častíc (jeden `THREE.Points`): `emit(poloha, rýchlosť, život, veľkosť)`, `update(dt, kamera, výška plátna)` |
+| `src/fx/fire.js` | `FireFx` | oheň z častíc (vlastný shader): `handFlame(kotva, sila, dt)`, `fireball(poloha, sila, dt)`, `burst(bod, sila)` (+ svetlo záblesku), `update` |
 | `src/world/groundState.js` | `GroundState` | stav zeme (bunkový automat): `heat`, `moisture`; `toGrid(x, z)`, `addAround(pole, x, z, polomer, prírastok)`, `hit(živel, x, z, sila)`, `update(dt)` |
 | `src/world/groundView.js` | `GroundView` | zobrazenie stavu na teréne: vlhkosť → farba vrcholov, teplo → `emissiveMap`; `update()` |
 | `scripts/make-heightmap.js` | — | pomocný nástroj (nie súčasť aplikácie): vygeneruje `public/terrain/heightmap.png` |
-| `src/cast/aim.js` | `aimToNdc(aim)`, `launchFromAim(aim, kamera, živel)`, `computeTrajectory(štart, rýchlosť, g, heightAt)` | bod mierenia → NDC; parametre hodu `{ start, velocity, gravity }`; parabolická dráha → `{ points, impact }` (`impact = null` bez dopadu) |
+| `src/cast/aim.js` | `aimToNdc(aim)`, `handAnchor(kamera)`, `launchFromAim(aim, kamera, živel)`, `trajectoryAt(štart, rýchlosť, g, t)`, `computeTrajectory(štart, rýchlosť, g, heightAt)` | bod mierenia → NDC; kotva ruky vo svete; parametre hodu `{ start, velocity, gravity }`; poloha na dráhe v čase t; parabolická dráha → `{ points, impact, time }` (`impact`, `time` = `null` bez dopadu) |
 | `src/cast/aim.js` | `AimCursor`, `TrajectoryLine` | kurzor v mieste dopadu: `moveTo(bod, normála)`, `hide`; čiara dráhy: `show(points)`, `hide` |
 | `src/input/mouse.js` | `MouseInput` | záložný vstup: poloha myši `aim` (0..1, `null` mimo plátna) a cast myšou s rovnakými zámermi ako ruka — `update(čas)` → zámer pri zmene fázy; `intent`, `casting` |
 | `src/input/camera.js` | `startCamera(width, height)` | `getUserMedia` → `{ video, error }`; pri chybe `video = null` (záloha myš) |
@@ -255,8 +286,9 @@ Poradie volaní v jednom snímku: `App.renderFrame` → `updateHand` (`HandTrack
 `updateGestures` (`GestureRecognizer.update`) → `HandPreview.showInfo` / `setState` / `draw`)
 → `updateMouse` (`MouseInput.update`) → `controls.enabled = !castIntent()` →
 `OrbitControls.update` → `updateAim` (`castIntent` → `launchFromAim` → `computeTrajectory` →
-`TrajectoryLine.show`, `AimCursor.moveTo`) → `GroundState.update(dt)` → `GroundView.update` →
-`renderer.render` → `updatePerf`.
+`TrajectoryLine.show`, `AimCursor.moveTo`) → `updateFx(dt)` (`FireFx.handFlame` →
+`updateProjectiles`: `trajectoryAt`, `FireFx.fireball` / pri dopade `burst` + `GroundState.hit` →
+`FireFx.update`) → `GroundState.update(dt)` → `GroundView.update` → `renderer.render` → `updatePerf`.
 
 ## 4. Preklad programu
 

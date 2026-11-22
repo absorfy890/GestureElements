@@ -11,10 +11,10 @@
 
 // Dopad podľa živlu: ktorú veličinu mení, polomer (jednotky scény) a koľko pridá v strede.
 const HIT = {
-    fire: { field: 'heat', radius: 2.5, amount: 1 },
+    fire: { field: 'heat', radius: 1.5, amount: 1 },
 };
 // Pravidlá (zatiaľ len vyhasínanie): o koľko veličina klesne za sekundu.
-const COOL_RATE = 0.05; // teplo: z 1 na 0 za 20 s
+const COOL_RATE = 0.1; // teplo: z 1 na 0 za 10 s
 const DRY_RATE = 0.02;  // vlhkosť: z 1 na 0 za 50 s
 
 /**

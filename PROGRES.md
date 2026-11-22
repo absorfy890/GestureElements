@@ -43,8 +43,13 @@ vrchol terénu, `heat` + `moisture` 0..1, `hit` s plynulým okrajom, `update` = 
 `world/groundView.js` (vlhkosť → stmavenie farby vrcholov, teplo → `emissiveMap` z `DataTexture`),
 rovná zem tiež 128 × 128; výstrel (`release`) → `hit` v mieste dopadu (zatiaľ okamžite, bez letu).
 Úloha 8. týždňa „stav buniek“ splnená (s týždňovým oneskorením).
-Ďalej (9. týždeň, termín 22.11. → mešká): `fx/fire` (let ohnivej gule po dráhe, záblesk), terén horí
-(horenie, dohorenie, spálené miesto), About pri štarte.
+Krok 8 hotový (22.11.2026) = **V1/4 efekt ohňa**: `fx/particles.js` (`ParticleSystem`, jeden
+`THREE.Points`, kruhový buffer, vztlak + odpor), `fx/fire.js` (`FireFx`, vlastný GLSL shader,
+aditívne miešanie): oheň v ruke počas zberu/mierenia (rastie s power), ohnivá guľa letí po dráhe
+(`trajectoryAt`, `App.projectiles`), pri dopade záblesk (častice + `PointLight`) a až vtedy
+`groundState.hit`. Študent upravil `HIT.fire.radius` 2,5 → 1,5 a vyhasínanie 20 → 10 s.
+Ďalej (9. týždeň, termín 22.11. → mešká): terén horí (horenie, dohorenie, spálené miesto),
+About pri štarte.
 
 ## Rozsah (minimum → ideál)
 - **V0 — spike:** kamera + hand tracking, 21 bodov na obrazovke; rovná zem v Three.js. Poistka.
@@ -234,5 +239,10 @@ Termín ukážky/skúšky; kam odovzdať (GIT?) a limit veľkosti; či stačí T
   textúra nie je zrkadlená; vlhkosť 0,45 → 0,55, na tmavom lese slabo vidno), výstrel castom myšou
   s ručným časom. Test odhalil: záporné dt (čas „dozadu“) obrátilo vyhasínanie na zahrievanie celého
   terénu → dt obmedzené na 0..0,1 s. Študentovi vysvetlené, prečo rovná zem má tiež 128 × 128.
+  Commitnuté študentom.
+- 22.11.2026 — efekt ohňa v 2 krokoch (častice + oheň v ruke → guľa + záblesk). Prvá verzia ohňa
+  v ruke bola biela preexponovaná škvrna (aditívne sčítanie) → jas častice 0,55, mäkší okraj, žlté
+  jadro, silnejší pohyb nahor. Overené snímkami s ručným časom (let, dopad, 3 guľe naraz; 6,6 ms
+  na snímok). Chyby `setPointerCapture` v konzole = artefakt testu s umelými udalosťami myši.
   Necommitnuté — commituje študent.
 

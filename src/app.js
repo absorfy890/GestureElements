@@ -13,7 +13,8 @@ import { createRenderer, createCamera, createScene } from './world/sceneSetup.js
 import { createGround, createHeightSampler, normalAt, GROUND_SIZE, FLAT_SEGMENTS } from './world/terrain.js';
 import { GroundState } from './world/groundState.js';
 import { GroundView } from './world/groundView.js';
-import { AimCursor, TrajectoryLine, launchFromAim, computeTrajectory } from './cast/aim.js';
+import { AimCursor, TrajectoryLine, launchFromAim, computeTrajectory, trajectoryAt, handAnchor } from './cast/aim.js';
+import { FireFx } from './fx/fire.js';
 import { MouseInput } from './input/mouse.js';
 import { RateMeter, PerfOverlay } from './ui/fpsMeter.js';
 import { snapshotFeatures, HandMotion } from './input/handFeatures.js';
@@ -42,6 +43,7 @@ export class App {
         this.groundView = new GroundView(this.ground, this.groundState);
         this.aimCursor = new AimCursor(this.scene);       // kurzor na zemi = miesto dopadu
         this.trajectory = new TrajectoryLine(this.scene); // náhľad dráhy kúzla pri mierení
+        this.fire = new FireFx(this.scene);               // efekt ohňa (častice)
         this.timer = new THREE.Timer(); // čas medzi snímkami pre animácie (od V1)
         this.hand = null;               // HandTracker; null = bez kamery/modelu → len myš
         this.preview = null;            // HandPreview (náhľad kamery s bodmi); null = bez kamery
@@ -52,7 +54,8 @@ export class App {
         this.recorder = null;           // FeatureRecorder (len vo vývojovom režime, nastaví main.js)
         this.gestures = null;           // GestureRecognizer (nastaví main.js, keď je ruka); null = len myš
         this.castResult = null;         // { phase, until } — posledné uvoľnenie / zrušenie na zobrazenie
-        this.lastImpact = null;         // miesto dopadu z posledného snímku mierenia (THREE.Vector3) alebo null
+        this.lastShot = null;           // hod z posledného snímku mierenia { start, velocity, gravity, impact, time } alebo null
+        this.projectiles = [];          // letiace kúzla { element, power, start, velocity, gravity, impact, time, t }
 
         // Meranie výkonu: snímky vykreslenia a detekcie ruky za sekundu (cieľ ≥ 30).
         this.renderMeter = new RateMeter();
@@ -99,12 +102,46 @@ export class App {
         this.controls.update();
         this.updateAim();
         // dt v rozsahu 0..MAX_DT: záporný krok (čas „dozadu“) by vyhasínanie obrátil na zahrievanie.
-        this.groundState.update(THREE.MathUtils.clamp(this.timer.getDelta(), 0, MAX_DT));
+        const dt = THREE.MathUtils.clamp(this.timer.getDelta(), 0, MAX_DT);
+        this.updateFx(dt);
+        this.groundState.update(dt);
         this.groundView.update();
         this.renderer.render(this.scene, this.camera);
 
         this.renderMeter.tick(timestamp);
         this.updatePerf();
+    }
+
+    /**
+     * Efekty: oheň v ruke počas castu ohňa, letiace kúzla, pohyb častíc.
+     * Vstup: dt — krok času (s). Výstup: žiadny.
+     */
+    updateFx(dt) {
+        const intent = this.castIntent();
+        if (intent?.element === 'fire') {
+            this.fire.handFlame(handAnchor(this.camera), intent.power, dt);
+        }
+        this.updateProjectiles(dt);
+        this.fire.update(dt, this.camera, this.renderer.domElement.height);
+    }
+
+    /**
+     * Let kúziel po dráhe: poloha z trajectoryAt (rovnaký vzorec ako náhľad); po čase letu
+     * záblesk a dopad na zem (groundState.hit). Vstup: dt — krok času (s). Výstup: žiadny.
+     */
+    updateProjectiles(dt) {
+        const pos = new THREE.Vector3();
+        this.projectiles = this.projectiles.filter((p) => {
+            p.t += dt;
+            if (p.t < p.time) {
+                trajectoryAt(p.start, p.velocity, p.gravity, p.t, pos);
+                this.fire.fireball(pos, p.power, dt); // V1: jediný živel s letom je oheň
+                return true;
+            }
+            this.fire.burst(p.impact, p.power);
+            this.groundState.hit(p.element, p.impact.x, p.impact.z, p.power);
+            return false; // dopadlo → zo zoznamu preč
+        });
     }
 
     /**
@@ -126,14 +163,15 @@ export class App {
     updateAim() {
         const intent = this.castIntent();
         if (!intent) {
-            this.lastImpact = null;
+            this.lastShot = null;
             this.trajectory.hide();
             this.aimCursor.hide();
             return;
         }
         const { start, velocity, gravity } = launchFromAim(intent.aim, this.camera, intent.element);
-        const { points, impact } = computeTrajectory(start, velocity, gravity, this.heightAt);
-        this.lastImpact = impact; // výstrel (release) príde v ďalšom snímku, keď sa už nemieri
+        const { points, impact, time } = computeTrajectory(start, velocity, gravity, this.heightAt);
+        // Výstrel (release) príde v ďalšom snímku, keď sa už nemieri → zapamätať hod.
+        this.lastShot = impact ? { start, velocity, gravity, impact, time } : null;
         this.trajectory.show(points);
         if (impact) {
             this.aimCursor.moveTo(impact, normalAt(this.heightAt, impact.x, impact.z));
@@ -228,8 +266,8 @@ export class App {
     }
 
     /**
-     * Zmena fázy castu (z ruky aj z myši): výpis do konzoly; pri výstrele dopad na zem (zatiaľ
-     * okamžite — let kúzla príde s efektom ohňa); pri konci castu si zapamätá výsledok
+     * Zmena fázy castu (z ruky aj z myši): výpis do konzoly; pri výstrele vypustí kúzlo na dráhu
+     * (dopad v updateProjectiles); pri konci castu si zapamätá výsledok
      * (uvoľnenie / zrušenie trvá jediný snímok → v náhľade sa ukazuje ešte CAST_RESULT_MS).
      * Vstup: event — zámer pri zmene fázy alebo null, timestamp — čas v ms. Výstup: žiadny.
      */
@@ -238,9 +276,8 @@ export class App {
             return;
         }
         console.log(`Cast: ${event.phase} (${event.element}, ${event.hand})`);
-        if (event.phase === 'release' && this.lastImpact) {
-            const { x, z } = this.lastImpact;
-            this.groundState.hit(event.element, x, z, event.power);
+        if (event.phase === 'release' && this.lastShot) {
+            this.projectiles.push({ ...this.lastShot, element: event.element, power: event.power, t: 0 });
         }
         if (event.phase === 'release' || event.phase === 'cancel') {
             this.castResult = { phase: event.phase, until: timestamp + CAST_RESULT_MS };
